@@ -288,12 +288,53 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
             </div>
           </div>
 
-          <div style="margin-bottom:16px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-              <label style="font-size:12px;color:#c084fc;font-weight:bold;">NỘI DUNG RESPONSE BODY MONG MUỐN TRẢ VỀ CHO APP/ROBOT</label>
-              <button onclick="formatMockBody()" style="background:#334155;color:#f8fafc;border:none;padding:2px 8px;border-radius:4px;font-size:11px;cursor:pointer;">✨ Prettify JSON</button>
+          <!-- ACTION / BODY MODIFICATION TYPE SECTION -->
+          <div style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:14px;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+              <label style="font-size:12px;color:#c084fc;font-weight:bold;">🎯 HÀNH ĐỘNG SỬA ĐỔI (ACTION TYPE):</label>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button type="button" id="btn-action-mode-full" onclick="switchActionMode('full')" style="background:#a855f7;color:#ffffff;border:none;padding:5px 12px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer;">📝 Thay Thế Toàn Bộ Response</button>
+                <button type="button" id="btn-action-mode-res-replace" onclick="switchActionMode('replace_res')" style="background:#334155;color:#94a3b8;border:none;padding:5px 12px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer;">🔍 Tìm & Thay Thế Response</button>
+                <button type="button" id="btn-action-mode-req-replace" onclick="switchActionMode('replace_req')" style="background:#334155;color:#94a3b8;border:none;padding:5px 12px;border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer;">📤 Tìm & Thay Thế Request</button>
+              </div>
             </div>
-            <textarea id="mock-response-body" rows="12" style="width:100%;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#f8fafc;padding:10px;font-family:monospace;font-size:12px;"></textarea>
+
+            <!-- Mode 1: Full Mock Body -->
+            <div id="action-mode-full-box">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-size:11px;color:#94a3b8;">Nội dung Response Body mới thay thế toàn bộ kết quả từ Server:</span>
+                <button onclick="formatMockBody()" style="background:#334155;color:#f8fafc;border:none;padding:2px 8px;border-radius:4px;font-size:11px;cursor:pointer;">✨ Prettify JSON</button>
+              </div>
+              <textarea id="mock-response-body" rows="10" style="width:100%;background:#090d16;border:1px solid #334155;border-radius:6px;color:#f8fafc;padding:10px;font-family:monospace;font-size:12px;"></textarea>
+            </div>
+
+            <!-- Mode 2 & 3: Find & Replace String in Response or Request -->
+            <div id="action-mode-replace-box" style="display:none;">
+              <div id="action-replace-desc" style="font-size:12px;color:#38bdf8;margin-bottom:10px;font-weight:600;">
+                Tìm chuỗi trong <b>Response Body</b> từ Server và thay thế thành chuỗi mới trước khi trả về App:
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;">
+                <div>
+                  <label style="display:block;font-size:11px;color:#94a3b8;font-weight:bold;margin-bottom:4px;">CHUỖI CẦN TÌM (Find / Search String)</label>
+                  <textarea id="mock-search-str" rows="3" placeholder='Ví dụ: duckmartians hoặc "plan":"plus"' style="width:100%;background:#090d16;border:1px solid #334155;border-radius:6px;color:#f8fafc;padding:8px 10px;font-family:monospace;font-size:12px;"></textarea>
+                </div>
+                <div>
+                  <label style="display:block;font-size:11px;color:#34d399;font-weight:bold;margin-bottom:4px;">THAY THẾ THÀNH (Replace With)</label>
+                  <textarea id="mock-replace-str" rows="3" placeholder='Ví dụ: postmark hoặc "plan":"max"' style="width:100%;background:#090d16;border:1px solid #334155;border-radius:6px;color:#34d399;padding:8px 10px;font-family:monospace;font-size:12px;"></textarea>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:16px;background:#090d16;padding:8px 12px;border-radius:6px;border:1px solid #1e293b;">
+                <label style="font-size:11px;color:#94a3b8;font-weight:bold;">PHƯƠNG THỨC TÌM KIẾM:</label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#f8fafc;cursor:pointer;">
+                  <input type="radio" name="mock-replace-type" value="text" checked style="cursor:pointer;"> Chuỗi văn bản thường (Plain String)
+                </label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#f8fafc;cursor:pointer;">
+                  <input type="radio" name="mock-replace-type" value="regex" style="cursor:pointer;"> Biểu thức chính quy (Regex)
+                </label>
+              </div>
+            </div>
           </div>
 
           <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid #334155;">
@@ -530,6 +571,39 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
     if (eBox) eBox.style.display = action === 'custom' ? 'block' : 'none';
   };
 
+  window.switchActionMode = function(mode) {
+    const modal = document.getElementById('mock-response-modal');
+    if (modal) modal.dataset.actionMode = mode;
+
+    const btnFull = document.getElementById('btn-action-mode-full');
+    const btnRes = document.getElementById('btn-action-mode-res-replace');
+    const btnReq = document.getElementById('btn-action-mode-req-replace');
+    const boxFull = document.getElementById('action-mode-full-box');
+    const boxReplace = document.getElementById('action-mode-replace-box');
+    const desc = document.getElementById('action-replace-desc');
+
+    // Reset buttons
+    [btnFull, btnRes, btnReq].forEach(b => {
+      if (b) { b.style.background = '#334155'; b.style.color = '#94a3b8'; }
+    });
+
+    if (mode === 'replace_res') {
+      if (btnRes) { btnRes.style.background = '#38bdf8'; btnRes.style.color = '#0f172a'; }
+      if (boxFull) boxFull.style.display = 'none';
+      if (boxReplace) boxReplace.style.display = 'block';
+      if (desc) desc.innerHTML = '🔍 Tìm chuỗi trong <b>Response Body</b> từ Server và thay thế thành chuỗi mới trước khi trả về App:';
+    } else if (mode === 'replace_req') {
+      if (btnReq) { btnReq.style.background = '#38bdf8'; btnReq.style.color = '#0f172a'; }
+      if (boxFull) boxFull.style.display = 'none';
+      if (boxReplace) boxReplace.style.display = 'block';
+      if (desc) desc.innerHTML = '📤 Tìm chuỗi trong <b>Request Body</b> gửi lên và thay thế thành chuỗi mới trước khi tới Server:';
+    } else {
+      if (btnFull) { btnFull.style.background = '#a855f7'; btnFull.style.color = '#ffffff'; }
+      if (boxFull) boxFull.style.display = 'block';
+      if (boxReplace) boxReplace.style.display = 'none';
+    }
+  };
+
   window.openResponseMockModal = async function(recordId) {
     const modal = getMockModal();
     modal.style.display = 'flex';
@@ -540,6 +614,7 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
     document.getElementById('mock-cond-enabled').checked = false;
     toggleConditionSection(false);
     switchCondMode('simple');
+    switchActionMode('full');
     document.getElementById('mock-cond-field').value = 'reqBody';
     document.getElementById('mock-cond-op').value = 'contains';
     document.getElementById('mock-cond-value').value = '';
@@ -547,6 +622,10 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
     document.getElementById('mock-cond-script-code').value = '';
     document.getElementById('mock-cond-else-action').value = 'passthrough';
     document.getElementById('mock-cond-else-body').value = '';
+    document.getElementById('mock-search-str').value = '';
+    document.getElementById('mock-replace-str').value = '';
+    const plainRadio = document.querySelector('input[name="mock-replace-type"][value="text"]');
+    if (plainRadio) plainRadio.checked = true;
     onCondFieldChange();
     onElseActionChange();
     document.getElementById('mock-save-btn').textContent = '💾 Lưu vào Data & Kích hoạt Ngay';
@@ -910,7 +989,28 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
 
       container.innerHTML = rules.map((r, idx) => {
         const isChecked = r.enabled ? 'checked' : '';
-        const bodyPreview = (r.modifyResponseBody && r.modifyResponseBody.content) ? r.modifyResponseBody.content.slice(0, 150) + '...' : '(Không có body)';
+        let bodyPreview = '(Không có body)';
+        let actionBadge = '';
+
+        if (r.modifyResponseBody) {
+          if (r.modifyResponseBody.mode === 'replace' || r.modifyResponseBody.mode === 'regex') {
+            const isReg = r.modifyResponseBody.mode === 'regex';
+            actionBadge = `<span style="font-size:11px;background:#0369a1;color:#7dd3fc;padding:2px 6px;border-radius:4px;margin-left:8px;">🔍 Response: Thay "${r.modifyResponseBody.search}" ➔ "${r.modifyResponseBody.replace}" ${isReg ? '(Regex)' : ''}</span>`;
+            bodyPreview = `[Tìm & Thay thế Response Body]: "${r.modifyResponseBody.search}" => "${r.modifyResponseBody.replace}"`;
+          } else {
+            actionBadge = '<span style="font-size:11px;background:#581c87;color:#d8b4fe;padding:2px 6px;border-radius:4px;margin-left:8px;">📝 Response: Mock Full Body</span>';
+            bodyPreview = (r.modifyResponseBody && r.modifyResponseBody.content) ? r.modifyResponseBody.content.slice(0, 150) + '...' : '(Rỗng)';
+          }
+        } else if (r.modifyRequestBody) {
+          if (r.modifyRequestBody.mode === 'replace' || r.modifyRequestBody.mode === 'regex') {
+            const isReg = r.modifyRequestBody.mode === 'regex';
+            actionBadge = `<span style="font-size:11px;background:#0f766e;color:#5eead4;padding:2px 6px;border-radius:4px;margin-left:8px;">📤 Request: Thay "${r.modifyRequestBody.search}" ➔ "${r.modifyRequestBody.replace}" ${isReg ? '(Regex)' : ''}</span>`;
+            bodyPreview = `[Tìm & Thay thế Request Body]: "${r.modifyRequestBody.search}" => "${r.modifyRequestBody.replace}"`;
+          } else {
+            actionBadge = '<span style="font-size:11px;background:#0f766e;color:#5eead4;padding:2px 6px;border-radius:4px;margin-left:8px;">📤 Request: Mock Full Body</span>';
+            bodyPreview = (r.modifyRequestBody && r.modifyRequestBody.content) ? r.modifyRequestBody.content.slice(0, 150) + '...' : '(Rỗng)';
+          }
+        }
 
         let condBadge = '<span style="font-size:11px;background:#334155;color:#94a3b8;padding:2px 6px;border-radius:4px;margin-left:8px;">⚡ Không điều kiện</span>';
         if (r.condition && r.condition.enabled) {
@@ -934,6 +1034,7 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
                 <input type="checkbox" ${isChecked} onchange="toggleRuleFromManager(${idx}, this.checked)" style="width:18px;height:18px;cursor:pointer;">
                 <div>
                   <strong style="font-size:14px;color:#c084fc;">${r.name || 'Rule #' + (idx+1)}</strong>
+                  ${actionBadge}
                   ${condBadge}
                   <span style="font-family:monospace;color:#94a3b8;margin-left:8px;font-size:12px;">${r.urlPattern || '*'}</span>
                 </div>
@@ -1010,8 +1111,27 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
       document.getElementById('mock-rule-name').value = r.name || '';
       document.getElementById('mock-url-pattern').value = r.urlPattern || '';
       document.getElementById('mock-status-code').value = r.modifyResponseStatusCode || 200;
-      document.getElementById('mock-response-body').value = (r.modifyResponseBody && r.modifyResponseBody.content) || '';
       document.getElementById('mock-rule-active-chk').checked = r.enabled !== false;
+
+      // Restore Action Mode
+      if (r.modifyRequestBody && (r.modifyRequestBody.mode === 'replace' || r.modifyRequestBody.mode === 'regex')) {
+        switchActionMode('replace_req');
+        document.getElementById('mock-search-str').value = r.modifyRequestBody.search || '';
+        document.getElementById('mock-replace-str').value = r.modifyRequestBody.replace || '';
+        const isRegex = r.modifyRequestBody.mode === 'regex';
+        const radio = document.querySelector(`input[name="mock-replace-type"][value="${isRegex ? 'regex' : 'text'}"]`);
+        if (radio) radio.checked = true;
+      } else if (r.modifyResponseBody && (r.modifyResponseBody.mode === 'replace' || r.modifyResponseBody.mode === 'regex')) {
+        switchActionMode('replace_res');
+        document.getElementById('mock-search-str').value = r.modifyResponseBody.search || '';
+        document.getElementById('mock-replace-str').value = r.modifyResponseBody.replace || '';
+        const isRegex = r.modifyResponseBody.mode === 'regex';
+        const radio = document.querySelector(`input[name="mock-replace-type"][value="${isRegex ? 'regex' : 'text'}"]`);
+        if (radio) radio.checked = true;
+      } else {
+        switchActionMode('full');
+        document.getElementById('mock-response-body').value = (r.modifyResponseBody && r.modifyResponseBody.content) || '';
+      }
 
       // Restore condition
       if (r.condition && r.condition.enabled) {
@@ -1057,6 +1177,11 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
     document.getElementById('mock-response-body').value = currentResBody;
     document.getElementById('mock-rule-active-chk').checked = true;
 
+    // Reset action mode
+    switchActionMode('full');
+    document.getElementById('mock-search-str').value = '';
+    document.getElementById('mock-replace-str').value = '';
+
     // Reset condition
     document.getElementById('mock-cond-enabled').checked = false;
     toggleConditionSection(false);
@@ -1101,10 +1226,47 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
     const elseAction = document.getElementById('mock-cond-else-action').value;
     const elseBody = document.getElementById('mock-cond-else-body').value;
 
+    const editingRuleId = modal.dataset.editingRuleId;
+    const actionMode = modal.dataset.actionMode || 'full';
+    let modifyResponseBody = null;
+    let modifyRequestBody = null;
+
+    if (actionMode === 'full') {
+      modifyResponseBody = {
+        mode: 'full',
+        content: responseBody
+      };
+    } else if (actionMode === 'replace_res') {
+      const search = document.getElementById('mock-search-str').value;
+      const replace = document.getElementById('mock-replace-str').value;
+      const isRegex = document.querySelector('input[name="mock-replace-type"]:checked').value === 'regex';
+      if (!search) {
+        alert('Vui lòng nhập chuỗi cần tìm kiếm trong Response!');
+        return;
+      }
+      modifyResponseBody = {
+        mode: isRegex ? 'regex' : 'replace',
+        search: search,
+        replace: replace
+      };
+    } else if (actionMode === 'replace_req') {
+      const search = document.getElementById('mock-search-str').value;
+      const replace = document.getElementById('mock-replace-str').value;
+      const isRegex = document.querySelector('input[name="mock-replace-type"]:checked').value === 'regex';
+      if (!search) {
+        alert('Vui lòng nhập chuỗi cần tìm kiếm trong Request!');
+        return;
+      }
+      modifyRequestBody = {
+        mode: isRegex ? 'regex' : 'replace',
+        search: search,
+        replace: replace
+      };
+    }
+
     btn.disabled = true;
     btn.textContent = '⏳ Đang lưu...';
 
-    const editingRuleId = modal.dataset.editingRuleId;
     const ruleObj = {
       id: editingRuleId || ('mock_rule_' + Date.now()),
       name: name,
@@ -1116,12 +1278,9 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
       elseAction: elseAction,
       elseBody: elseBody,
       modifyRequestHeaders: null,
-      modifyRequestBody: null,
+      modifyRequestBody: modifyRequestBody,
       modifyResponseStatusCode: statusCode,
-      modifyResponseBody: {
-        mode: 'full',
-        content: responseBody
-      }
+      modifyResponseBody: modifyResponseBody
     };
 
     try {
