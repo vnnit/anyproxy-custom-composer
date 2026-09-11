@@ -318,31 +318,19 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
               <textarea id="mock-response-body" rows="10" style="width:100%;background:#090d16;border:1px solid #334155;border-radius:6px;color:#f8fafc;padding:10px;font-family:monospace;font-size:12px;"></textarea>
             </div>
 
-            <!-- Mode 2 & 3: Find & Replace String in Response or Request -->
+            <!-- Mode 2 & 3: Find & Replace String in Response or Request (Nhiều cặp thay thế) -->
             <div id="action-mode-replace-box" style="display:none;">
-              <div id="action-replace-desc" style="font-size:12px;color:#38bdf8;margin-bottom:10px;font-weight:600;">
-                Tìm chuỗi trong <b>Response Body</b> từ Server và thay thế thành chuỗi mới trước khi trả về App:
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                <div id="action-replace-desc" style="font-size:12px;color:#38bdf8;font-weight:600;">
+                  Tìm chuỗi trong <b>Response Body</b> từ Server và thay thế thành chuỗi mới trước khi trả về App:
+                </div>
+                <button type="button" onclick="addReplacePairRow()" style="background:#0284c7;color:white;border:none;padding:5px 12px;border-radius:5px;font-size:12px;font-weight:bold;cursor:pointer;display:flex;align-items:center;gap:5px;">
+                  ➕ Thêm Cặp Thay Thế
+                </button>
               </div>
 
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;">
-                <div>
-                  <label style="display:block;font-size:11px;color:#94a3b8;font-weight:bold;margin-bottom:4px;">CHUỖI CẦN TÌM (Find / Search String)</label>
-                  <textarea id="mock-search-str" rows="3" placeholder='Ví dụ: duckmartians hoặc "plan":"plus"' style="width:100%;background:#090d16;border:1px solid #334155;border-radius:6px;color:#f8fafc;padding:8px 10px;font-family:monospace;font-size:12px;"></textarea>
-                </div>
-                <div>
-                  <label style="display:block;font-size:11px;color:#34d399;font-weight:bold;margin-bottom:4px;">THAY THẾ THÀNH (Replace With)</label>
-                  <textarea id="mock-replace-str" rows="3" placeholder='Ví dụ: postmark hoặc "plan":"max"' style="width:100%;background:#090d16;border:1px solid #334155;border-radius:6px;color:#34d399;padding:8px 10px;font-family:monospace;font-size:12px;"></textarea>
-                </div>
-              </div>
-
-              <div style="display:flex;align-items:center;gap:16px;background:#090d16;padding:8px 12px;border-radius:6px;border:1px solid #1e293b;">
-                <label style="font-size:11px;color:#94a3b8;font-weight:bold;">PHƯƠNG THỨC TÌM KIẾM:</label>
-                <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#f8fafc;cursor:pointer;">
-                  <input type="radio" name="mock-replace-type" value="text" checked style="cursor:pointer;"> Chuỗi văn bản thường (Plain String)
-                </label>
-                <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#f8fafc;cursor:pointer;">
-                  <input type="radio" name="mock-replace-type" value="regex" style="cursor:pointer;"> Biểu thức chính quy (Regex)
-                </label>
+              <div id="mock-replace-pairs-container" style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px;max-height:300px;overflow-y:auto;padding-right:4px;">
+                <!-- Rendered dynamically -->
               </div>
             </div>
           </div>
@@ -605,6 +593,95 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
     }
   };
 
+  // Helper functions for Multiple String Replace Pairs
+  window.getReplacePairsFromDom = function() {
+    const container = document.getElementById('mock-replace-pairs-container');
+    if (!container) return [];
+    const rows = container.querySelectorAll('.mock-replace-pair-row');
+    const pairs = [];
+    rows.forEach(r => {
+      const searchEl = r.querySelector('.pair-search-str');
+      const replaceEl = r.querySelector('.pair-replace-str');
+      const regexRadio = r.querySelector('input[type="radio"][value="regex"]');
+      const search = searchEl ? searchEl.value : '';
+      const replace = replaceEl ? replaceEl.value : '';
+      const mode = (regexRadio && regexRadio.checked) ? 'regex' : 'text';
+      pairs.push({ search, replace, mode });
+    });
+    return pairs;
+  };
+
+  window.renderReplacePairs = function(pairs) {
+    const container = document.getElementById('mock-replace-pairs-container');
+    if (!container) return;
+    if (!Array.isArray(pairs) || pairs.length === 0) {
+      pairs = [{ search: '', replace: '', mode: 'text' }];
+    }
+
+    container.innerHTML = pairs.map((p, idx) => {
+      const rowId = 'pair_row_' + idx + '_' + Math.random().toString(36).substr(2, 4);
+      const isRegex = p.mode === 'regex';
+      const canDelete = pairs.length > 1;
+
+      return `
+        <div class="mock-replace-pair-row" id="${rowId}" style="background:#090d16;border:1px solid #1e293b;border-radius:8px;padding:10px 12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+            <span style="font-size:12px;font-weight:bold;color:#cbd5e1;">📌 Cặp thay thế #${idx + 1}:</span>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;cursor:pointer;">
+                <input type="radio" name="pair_mode_${rowId}" value="text" ${!isRegex ? 'checked' : ''} style="cursor:pointer;"> Chuỗi thường (Plain)
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8;cursor:pointer;">
+                <input type="radio" name="pair_mode_${rowId}" value="regex" ${isRegex ? 'checked' : ''} style="cursor:pointer;"> Regex
+              </label>
+              ${canDelete ? `
+                <button type="button" onclick="removeReplacePairRow('${rowId}')" style="background:#dc2626;color:white;border:none;padding:2px 8px;border-radius:4px;font-size:11px;cursor:pointer;">
+                  🗑️ Xóa
+                </button>
+              ` : ''}
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label style="display:block;font-size:11px;color:#94a3b8;font-weight:bold;margin-bottom:4px;">CHUỖI CẦN TÌM (Find / Search String)</label>
+              <textarea class="pair-search-str" rows="2" placeholder='Ví dụ: "plan":"plus" hoặc duckmartians' style="width:100%;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#f8fafc;padding:6px 10px;font-family:monospace;font-size:12px;box-sizing:border-box;">${escapeHtml(p.search || '')}</textarea>
+            </div>
+            <div>
+              <label style="display:block;font-size:11px;color:#34d399;font-weight:bold;margin-bottom:4px;">THAY THẾ THÀNH (Replace With)</label>
+              <textarea class="pair-replace-str" rows="2" placeholder='Ví dụ: "plan":"max" hoặc postmark' style="width:100%;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#34d399;padding:6px 10px;font-family:monospace;font-size:12px;box-sizing:border-box;">${escapeHtml(p.replace || '')}</textarea>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  window.addReplacePairRow = function(search = '', replace = '', mode = 'text') {
+    const existing = window.getReplacePairsFromDom();
+    existing.push({ search, replace, mode });
+    window.renderReplacePairs(existing);
+  };
+
+  window.removeReplacePairRow = function(rowId) {
+    const container = document.getElementById('mock-replace-pairs-container');
+    if (!container) return;
+    const rows = container.querySelectorAll('.mock-replace-pair-row');
+    const existing = [];
+    rows.forEach(r => {
+      if (r.id !== rowId) {
+        const searchEl = r.querySelector('.pair-search-str');
+        const replaceEl = r.querySelector('.pair-replace-str');
+        const regexRadio = r.querySelector('input[type="radio"][value="regex"]');
+        existing.push({
+          search: searchEl ? searchEl.value : '',
+          replace: replaceEl ? replaceEl.value : '',
+          mode: (regexRadio && regexRadio.checked) ? 'regex' : 'text'
+        });
+      }
+    });
+    window.renderReplacePairs(existing);
+  };
+
   window.openResponseMockModal = async function(recordId) {
     const modal = getMockModal();
     modal.style.display = 'flex';
@@ -623,10 +700,7 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
     document.getElementById('mock-cond-script-code').value = '';
     document.getElementById('mock-cond-else-action').value = 'passthrough';
     document.getElementById('mock-cond-else-body').value = '';
-    document.getElementById('mock-search-str').value = '';
-    document.getElementById('mock-replace-str').value = '';
-    const plainRadio = document.querySelector('input[name="mock-replace-type"][value="text"]');
-    if (plainRadio) plainRadio.checked = true;
+    window.renderReplacePairs([{ search: '', replace: '', mode: 'text' }]);
     onCondFieldChange();
     onElseActionChange();
     document.getElementById('mock-save-btn').textContent = '💾 Lưu vào Data & Kích hoạt Ngay';
@@ -1070,22 +1144,26 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
         let actionBadge = '';
 
         if (r.modifyResponseBody) {
-          if (r.modifyResponseBody.mode === 'replace' || r.modifyResponseBody.mode === 'regex') {
-            const isReg = r.modifyResponseBody.mode === 'regex';
-            actionBadge = `<span style="font-size:11px;background:#0369a1;color:#7dd3fc;padding:2px 6px;border-radius:4px;margin-left:8px;">🔍 Response: Thay "${r.modifyResponseBody.search}" ➔ "${r.modifyResponseBody.replace}" ${isReg ? '(Regex)' : ''}</span>`;
-            bodyPreview = `[Tìm & Thay thế Response Body]: "${r.modifyResponseBody.search}" => "${r.modifyResponseBody.replace}"`;
+          const mod = r.modifyResponseBody;
+          const hasReplacements = Array.isArray(mod.replacements) && mod.replacements.length > 0;
+          if (hasReplacements || mod.mode === 'replace' || mod.mode === 'regex') {
+            const list = hasReplacements ? mod.replacements : [{ search: mod.search, replace: mod.replace, mode: mod.mode }];
+            actionBadge = `<span style="font-size:11px;background:#0369a1;color:#7dd3fc;padding:2px 6px;border-radius:4px;margin-left:8px;">🔍 Response: Thay ${list.length} chuỗi</span>`;
+            bodyPreview = `[Tìm & Thay thế Response Body]: ` + list.map(p => `"${p.search}" ➔ "${p.replace}"`).join(', ');
           } else {
             actionBadge = '<span style="font-size:11px;background:#581c87;color:#d8b4fe;padding:2px 6px;border-radius:4px;margin-left:8px;">📝 Response: Mock Full Body</span>';
-            bodyPreview = (r.modifyResponseBody && r.modifyResponseBody.content) ? r.modifyResponseBody.content.slice(0, 150) + '...' : '(Rỗng)';
+            bodyPreview = (mod && mod.content) ? mod.content.slice(0, 150) + '...' : '(Rỗng)';
           }
         } else if (r.modifyRequestBody) {
-          if (r.modifyRequestBody.mode === 'replace' || r.modifyRequestBody.mode === 'regex') {
-            const isReg = r.modifyRequestBody.mode === 'regex';
-            actionBadge = `<span style="font-size:11px;background:#0f766e;color:#5eead4;padding:2px 6px;border-radius:4px;margin-left:8px;">📤 Request: Thay "${r.modifyRequestBody.search}" ➔ "${r.modifyRequestBody.replace}" ${isReg ? '(Regex)' : ''}</span>`;
-            bodyPreview = `[Tìm & Thay thế Request Body]: "${r.modifyRequestBody.search}" => "${r.modifyRequestBody.replace}"`;
+          const mod = r.modifyRequestBody;
+          const hasReplacements = Array.isArray(mod.replacements) && mod.replacements.length > 0;
+          if (hasReplacements || mod.mode === 'replace' || mod.mode === 'regex') {
+            const list = hasReplacements ? mod.replacements : [{ search: mod.search, replace: mod.replace, mode: mod.mode }];
+            actionBadge = `<span style="font-size:11px;background:#0f766e;color:#5eead4;padding:2px 6px;border-radius:4px;margin-left:8px;">📤 Request: Thay ${list.length} chuỗi</span>`;
+            bodyPreview = `[Tìm & Thay thế Request Body]: ` + list.map(p => `"${p.search}" ➔ "${p.replace}"`).join(', ');
           } else {
             actionBadge = '<span style="font-size:11px;background:#0f766e;color:#5eead4;padding:2px 6px;border-radius:4px;margin-left:8px;">📤 Request: Mock Full Body</span>';
-            bodyPreview = (r.modifyRequestBody && r.modifyRequestBody.content) ? r.modifyRequestBody.content.slice(0, 150) + '...' : '(Rỗng)';
+            bodyPreview = (mod && mod.content) ? mod.content.slice(0, 150) + '...' : '(Rỗng)';
           }
         }
 
@@ -1191,23 +1269,22 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
       document.getElementById('mock-rule-active-chk').checked = r.enabled !== false;
 
       // Restore Action Mode
-      if (r.modifyRequestBody && (r.modifyRequestBody.mode === 'replace' || r.modifyRequestBody.mode === 'regex')) {
+      if (r.modifyRequestBody && (r.modifyRequestBody.mode === 'replace' || r.modifyRequestBody.mode === 'regex' || r.modifyRequestBody.replacements)) {
         switchActionMode('replace_req');
-        document.getElementById('mock-search-str').value = r.modifyRequestBody.search || '';
-        document.getElementById('mock-replace-str').value = r.modifyRequestBody.replace || '';
-        const isRegex = r.modifyRequestBody.mode === 'regex';
-        const radio = document.querySelector(`input[name="mock-replace-type"][value="${isRegex ? 'regex' : 'text'}"]`);
-        if (radio) radio.checked = true;
-      } else if (r.modifyResponseBody && (r.modifyResponseBody.mode === 'replace' || r.modifyResponseBody.mode === 'regex')) {
+        const pairs = Array.isArray(r.modifyRequestBody.replacements) && r.modifyRequestBody.replacements.length
+          ? r.modifyRequestBody.replacements
+          : [{ search: r.modifyRequestBody.search || '', replace: r.modifyRequestBody.replace || '', mode: r.modifyRequestBody.mode === 'regex' ? 'regex' : 'text' }];
+        renderReplacePairs(pairs);
+      } else if (r.modifyResponseBody && (r.modifyResponseBody.mode === 'replace' || r.modifyResponseBody.mode === 'regex' || r.modifyResponseBody.replacements)) {
         switchActionMode('replace_res');
-        document.getElementById('mock-search-str').value = r.modifyResponseBody.search || '';
-        document.getElementById('mock-replace-str').value = r.modifyResponseBody.replace || '';
-        const isRegex = r.modifyResponseBody.mode === 'regex';
-        const radio = document.querySelector(`input[name="mock-replace-type"][value="${isRegex ? 'regex' : 'text'}"]`);
-        if (radio) radio.checked = true;
+        const pairs = Array.isArray(r.modifyResponseBody.replacements) && r.modifyResponseBody.replacements.length
+          ? r.modifyResponseBody.replacements
+          : [{ search: r.modifyResponseBody.search || '', replace: r.modifyResponseBody.replace || '', mode: r.modifyResponseBody.mode === 'regex' ? 'regex' : 'text' }];
+        renderReplacePairs(pairs);
       } else {
         switchActionMode('full');
         document.getElementById('mock-response-body').value = (r.modifyResponseBody && r.modifyResponseBody.content) || '';
+        renderReplacePairs([{ search: '', replace: '', mode: 'text' }]);
       }
 
       // Restore condition
@@ -1256,8 +1333,7 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
 
     // Reset action mode
     switchActionMode('full');
-    document.getElementById('mock-search-str').value = '';
-    document.getElementById('mock-replace-str').value = '';
+    renderReplacePairs([{ search: '', replace: '', mode: 'text' }]);
 
     // Reset condition
     document.getElementById('mock-cond-enabled').checked = false;
@@ -1314,30 +1390,30 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
         content: responseBody
       };
     } else if (actionMode === 'replace_res') {
-      const search = document.getElementById('mock-search-str').value;
-      const replace = document.getElementById('mock-replace-str').value;
-      const isRegex = document.querySelector('input[name="mock-replace-type"]:checked').value === 'regex';
-      if (!search) {
-        alert('Vui lòng nhập chuỗi cần tìm kiếm trong Response!');
+      const allPairs = getReplacePairsFromDom();
+      const validPairs = allPairs.filter(p => p.search && p.search.trim().length > 0);
+      if (!validPairs.length) {
+        alert('Vui lòng nhập ít nhất một chuỗi cần tìm kiếm trong Response Body!');
         return;
       }
       modifyResponseBody = {
-        mode: isRegex ? 'regex' : 'replace',
-        search: search,
-        replace: replace
+        mode: 'replace',
+        replacements: validPairs,
+        search: validPairs[0].search,
+        replace: validPairs[0].replace
       };
     } else if (actionMode === 'replace_req') {
-      const search = document.getElementById('mock-search-str').value;
-      const replace = document.getElementById('mock-replace-str').value;
-      const isRegex = document.querySelector('input[name="mock-replace-type"]:checked').value === 'regex';
-      if (!search) {
-        alert('Vui lòng nhập chuỗi cần tìm kiếm trong Request!');
+      const allPairs = getReplacePairsFromDom();
+      const validPairs = allPairs.filter(p => p.search && p.search.trim().length > 0);
+      if (!validPairs.length) {
+        alert('Vui lòng nhập ít nhất một chuỗi cần tìm kiếm trong Request Body!');
         return;
       }
       modifyRequestBody = {
-        mode: isRegex ? 'regex' : 'replace',
-        search: search,
-        replace: replace
+        mode: 'replace',
+        replacements: validPairs,
+        search: validPairs[0].search,
+        replace: validPairs[0].replace
       };
     }
 

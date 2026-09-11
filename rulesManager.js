@@ -111,6 +111,20 @@ function modifyRequest(requestDetail) {
         if (mod.mode === 'full' && typeof mod.content === 'string') {
           bodyStr = mod.content;
           modified = true;
+        } else if (Array.isArray(mod.replacements) && mod.replacements.length > 0) {
+          for (const item of mod.replacements) {
+            if (!item.search) continue;
+            if (item.mode === 'regex' || item.isRegex) {
+              try {
+                const re = new RegExp(item.search, 'g');
+                bodyStr = bodyStr.replace(re, item.replace != null ? item.replace : '');
+                modified = true;
+              } catch (e) {}
+            } else {
+              bodyStr = bodyStr.split(item.search).join(item.replace != null ? item.replace : '');
+              modified = true;
+            }
+          }
         } else if (mod.mode === 'replace' && mod.search != null && mod.replace != null) {
           bodyStr = bodyStr.split(mod.search).join(mod.replace);
           modified = true;
@@ -303,6 +317,20 @@ function modifyResponse(requestDetail, responseDetail) {
           if (mod.mode === 'full' && typeof mod.content === 'string') {
             bodyStr = mod.content;
             modified = true;
+          } else if (Array.isArray(mod.replacements) && mod.replacements.length > 0) {
+            for (const item of mod.replacements) {
+              if (!item.search) continue;
+              if (item.mode === 'regex' || item.isRegex) {
+                try {
+                  const re = new RegExp(item.search, 'g');
+                  bodyStr = bodyStr.replace(re, item.replace != null ? item.replace : '');
+                  modified = true;
+                } catch (e) {}
+              } else {
+                bodyStr = bodyStr.split(item.search).join(item.replace != null ? item.replace : '');
+                modified = true;
+              }
+            }
           } else if (mod.mode === 'replace' && mod.search != null && mod.replace != null) {
             bodyStr = bodyStr.split(mod.search).join(mod.replace);
             modified = true;
