@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const net = require('net');
 const ipWhitelistManager = require('./ipWhitelistManager');
@@ -115,13 +115,31 @@ function createSocksServer(options = {}) {
           targetPort = buffer.readUInt16BE(5 + domainLen);
           reqLen = 5 + domainLen + 2;
         } else if (atyp === 0x04) {
-          // IPv6
+          // IPv6: 16 bytes
           if (buffer.length < 22) return;
-          const parts = [];
-          for (let i = 0; i < 16; i += 2) {
-            parts.push(buffer.readUInt16BE(4 + i).toString(16));
+          const ipv6Bytes = buffer.slice(4, 20);
+
+          // 1. Cloudflare 2606:4700::/32 embeds IPv4 in the lowest 32 bits
+          if (ipv6Bytes[0] === 0x26 && ipv6Bytes[1] === 0x06 && ipv6Bytes[2] === 0x47 && ipv6Bytes[3] === 0x00) {
+            targetHost = `${ipv6Bytes[12]}.${ipv6Bytes[13]}.${ipv6Bytes[14]}.${ipv6Bytes[15]}`;
+            console.log(`[SOCKS5 IPv6->IPv4] Auto translated Cloudflare IPv6 to IPv4 -> ${targetHost}`);
           }
-          targetHost = parts.join(':');
+          // 2. IPv4-mapped IPv6 (::ffff:w.x.y.z)
+          else if (ipv6Bytes.slice(0, 10).every(b => b === 0) && ipv6Bytes[10] === 0xff && ipv6Bytes[11] === 0xff) {
+            targetHost = `${ipv6Bytes[12]}.${ipv6Bytes[13]}.${ipv6Bytes[14]}.${ipv6Bytes[15]}`;
+            console.log(`[SOCKS5 IPv6->IPv4] Translated ::ffff: IPv6 to IPv4 -> ${targetHost}`);
+          }
+          // 3. NAT64 prefix (64:ff9b::/96)
+          else if (ipv6Bytes[0] === 0x00 && ipv6Bytes[1] === 0x64 && ipv6Bytes[2] === 0xff && ipv6Bytes[3] === 0x9b && ipv6Bytes.slice(4, 12).every(b => b === 0)) {
+            targetHost = `${ipv6Bytes[12]}.${ipv6Bytes[13]}.${ipv6Bytes[14]}.${ipv6Bytes[15]}`;
+            console.log(`[SOCKS5 IPv6->IPv4] Translated NAT64 IPv6 to IPv4 -> ${targetHost}`);
+          } else {
+            const parts = [];
+            for (let i = 0; i < 16; i += 2) {
+              parts.push(buffer.readUInt16BE(4 + i).toString(16));
+            }
+            targetHost = parts.join(':');
+          }
           targetPort = buffer.readUInt16BE(20);
           reqLen = 22;
         } else {
