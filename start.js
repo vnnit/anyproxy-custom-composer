@@ -5,12 +5,9 @@ process.env.ANYPROXY_HOME = path.resolve(__dirname, '.anyproxy');
 
 const AnyProxy = require('anyproxy');
 const ipWhitelistManager = require('./ipWhitelistManager');
-const { createSocksServer } = require('./socksServer');
 
 const proxyPort = parseInt(process.env.PORT || '8001', 10);
 const webPort = parseInt(process.env.WEB_PORT || '8002', 10);
-const socksPort = parseInt(process.env.SOCKS_PORT || '1080', 10);
-const socksAltPort = parseInt(process.env.SOCKS_ALT_PORT || '8003', 10);
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
@@ -33,11 +30,10 @@ proxyServer.on('ready', () => {
   console.log('====================================================');
   console.log('AnyProxy is running:');
   console.log(`- HTTP/HTTPS Proxy Port : ${proxyPort}`);
-  console.log(`- SOCKS4/5 Proxy Ports  : ${socksPort} (default) & ${socksAltPort} (alt)`);
   console.log(`- Web UI / Management   : http://127.0.0.1:${webPort}`);
   console.log(`- Download Root CA      : http://127.0.0.1:${webPort}/fetchCrtFile`);
   console.log(`- CA Location           : ${path.resolve(__dirname, '.anyproxy/certificates/rootCA.crt')}`);
-  console.log(`- IP Whitelist          : ${ipWhitelistManager.getWhitelistConfig().enabled ? 'ACTIVE (Protected)' : 'DISABLED (Open)'}`);
+  console.log(`- IP Whitelist (Port 8001): ${ipWhitelistManager.getWhitelistConfig().enabled ? 'ACTIVE (Protected)' : 'DISABLED (Open)'}`);
   console.log('====================================================');
 
   // Enforce IP Whitelist on Proxy Port 8001
@@ -80,26 +76,16 @@ proxyServer.on('error', (e) => {
 
 proxyServer.start();
 
-// Start SOCKS4/5 proxy servers on both 1080 and 8003
-const socksServer1 = createSocksServer({ port: socksPort });
-socksServer1.listen(socksPort, '0.0.0.0', () => {
-  console.log(`[SOCKS Server] Listening on port ${socksPort}`);
-});
-
-const socksServer2 = createSocksServer({ port: socksAltPort });
-socksServer2.listen(socksAltPort, '0.0.0.0', () => {
-  console.log(`[SOCKS Server] Listening on port ${socksAltPort}`);
-});
-
 // Handle termination gracefully
-function shutdown() {
-  console.log('\nShutting down proxy servers...');
-  try { proxyServer.close(); } catch (e) {}
-  try { socksServer1.close(); } catch (e) {}
-  try { socksServer2.close(); } catch (e) {}
+process.on('SIGINT', () => {
+  console.log('\nStopping AnyProxy...');
+  proxyServer.close();
   process.exit(0);
-}
+});
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+process.on('SIGTERM', () => {
+  console.log('\nTerminating AnyProxy...');
+  proxyServer.close();
+  process.exit(0);
+});
 
