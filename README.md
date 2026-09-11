@@ -55,8 +55,9 @@ npm install
 npm start
 ```
 
-Mặc định AnyProxy sẽ lắng nghe tại:
-- **HTTP / HTTPS Proxy Port:** `8001`
+Mặc định hệ thống sẽ lắng nghe tại:
+- **HTTP / HTTPS Proxy Port:** `8001` (Bắt gói, giải mã SSL, Composer & Mock Rules)
+- **SOCKS4 / SOCKS5 Proxy Port:** `1080` (Mặc định) và `8003` (Dự phòng) (Proxy trong suốt, dùng cho Proxifier, bot, app tự do không can thiệp SSL)
 - **Web UI Quản lý:** `http://127.0.0.1:8002` (hoặc `http://<IP_MÁY_TÍNH>:8002`)
 - **Trang Composer độc lập:** `http://127.0.0.1:8002/composer`
 - **Tải Root CA Certificate:** `http://127.0.0.1:8002/fetchCrtFile`

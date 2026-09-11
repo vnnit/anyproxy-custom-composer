@@ -99,7 +99,39 @@ function patchIndexHtml() {
   }
 }
 
-// 4. Initialize config templates if not exist
+// 4. Patch anyproxy requestHandler.js to fix IPv6 host parsing bug
+function patchRequestHandler() {
+  const reqHandlerPath = path.resolve(__dirname, 'node_modules/anyproxy/lib/requestHandler.js');
+  if (fs.existsSync(reqHandlerPath)) {
+    let content = fs.readFileSync(reqHandlerPath, 'utf8');
+    let changed = false;
+
+    if (content.includes("const host = req.url.split(':')[0]")) {
+      const oldSnippet = "const host = req.url.split(':')[0],\n      targetPort = req.url.split(':')[1];";
+      const newSnippet = `const lastColonIdx = req.url.lastIndexOf(':');
+    const host = lastColonIdx !== -1 ? req.url.substring(0, lastColonIdx) : req.url;
+    const targetPort = lastColonIdx !== -1 ? req.url.substring(lastColonIdx + 1) : '443';`;
+      content = content.replace(oldSnippet, newSnippet);
+      changed = true;
+    }
+
+    if (content.includes("host,\n            port: (targetPort === 80) ? 443 : targetPort")) {
+      const oldOrigin = "host,\n            port: (targetPort === 80) ? 443 : targetPort";
+      const newOrigin = "host: (host.startsWith('[') && host.endsWith(']')) ? host.slice(1, -1) : host,\n            port: (targetPort === 80) ? 443 : (parseInt(targetPort, 10) || 443)";
+      content = content.replace(oldOrigin, newOrigin);
+      changed = true;
+    }
+
+    if (changed) {
+      fs.writeFileSync(reqHandlerPath, content, 'utf8');
+      console.log('[Patch] Patched requestHandler.js for IPv6 host support');
+    } else {
+      console.log('[Patch] requestHandler.js already patched for IPv6.');
+    }
+  }
+}
+
+// 5. Initialize config templates if not exist
 function initConfigs() {
   const rewriteRulesPath = path.resolve(__dirname, 'rewrite_rules.json');
   if (!fs.existsSync(rewriteRulesPath)) {
@@ -134,6 +166,7 @@ function initConfigs() {
 patchCertGenerator();
 patchWebInterface();
 patchIndexHtml();
+patchRequestHandler();
 initConfigs();
 initCert();
 
