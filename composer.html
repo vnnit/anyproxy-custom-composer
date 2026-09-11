@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AnyProxy - Request Composer & Rewrite Rules</title>
+  <link rel="icon" type="image/png" href="/favico.png">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --primary-hover: #0ea5e9;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    header {
+      background: #111827;
+      border-bottom: 1px solid var(--card-border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header .logo {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    header .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-left: 16px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    header .nav-links a:hover, header .nav-links a.active {
+      background: #1e293b;
+      color: var(--text);
+    }
+    .tabs-nav {
+      display: flex;
+      gap: 8px;
+      padding: 16px 24px 0;
+      border-bottom: 1px solid var(--card-border);
+      background: #1e293b55;
+    }
+    .tabs-nav button {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text-muted);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 10px 18px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .tabs-nav button.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+    .tab-content { display: none; padding: 20px 24px; }
+    .tab-content.active { display: block; }
+    
+    /* Layout */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 1024px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    /* Inputs */
+    .input-group {
+      margin-bottom: 14px;
+    }
+    .input-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    input, select, textarea {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 8px 12px;
+      font-family: inherit;
+      font-size: 13px;
+    }
+    textarea {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      resize: vertical;
+      min-height: 120px;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      outline: none;
+    }
+    
+    .url-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .url-bar select {
+      width: 110px;
+      font-weight: 700;
+      background: #334155;
+      color: #38bdf8;
+    }
+    .url-bar input {
+      flex: 1;
+      font-family: monospace;
+    }
+    .btn {
+      background: var(--primary);
+      color: #0f172a;
+      border: none;
+      font-weight: 600;
+      padding: 9px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: var(--primary-hover); }
+    .btn-secondary {
+      background: #334155;
+      color: var(--text);
+    }
+    .btn-secondary:hover { background: #475569; }
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+    /* Quick Request Selector */
+    .quick-select {
+      margin-bottom: 16px;
+      background: #111827;
+      border: 1px dashed var(--card-border);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .quick-select .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-get { background: #0284c7; color: white; }
+    .badge-post { background: #16a34a; color: white; }
+    .badge-put { background: #d97706; color: white; }
+    .badge-delete { background: #dc2626; color: white; }
+    .badge-success { background: #16a34a22; color: #4ade80; border: 1px solid #16a34a; }
+    .badge-error { background: #dc262622; color: #f87171; border: 1px solid #dc2626; }
+
+    /* Response View */
+    .res-meta {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 14px;
+      padding: 10px 14px;
+      background: #111827;
+      border-radius: 6px;
+    }
+    .res-body-box {
+      position: relative;
+    }
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #334155aa;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .copy-btn:hover { background: #334155; }
+    pre {
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 12px;
+      overflow: auto;
+      max-height: 480px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 12px;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* Rules Table */
+    .rule-item {
+      background: #111827;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .rule-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #334155;
+      transition: .2s;
+      border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+    input:checked + .slider { background-color: var(--primary); }
+    input:checked + .slider:before { transform: translateX(20px); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+      <span>🚀 AnyProxy Composer & Rules</span>
+    </div>
+    <div class="nav-links">
+      <a href="/" target="_blank">📋 Traffic Inspector (Mặc định)</a>
+      <a href="/fetchCrtFile" target="_blank">📥 Tải Root CA (Hạn 2036)</a>
+    </div>
+  </header>
+
+  <div class="tabs-nav">
+    <button class="active" onclick="switchTab('composer')">✏️ Request Composer (Sửa & Gửi lại)</button>
+    <button onclick="switchTab('rules')">⚡ Intercept & Rewrite Rules (Sửa Tự động)</button>
+  </div>
+
+  <!-- TAB 1: COMPOSER -->
+  <div id="tab-composer" class="tab-content active">
+    
+    <!-- Quick Select Captured Request -->
+    <div class="quick-select">
+      <div class="header-row">
+        <strong>📥 Chọn Request đã bắt được từ AnyProxy để nạp vào Form:</strong>
+        <button class="btn btn-secondary btn-sm" onclick="loadCapturedRequests()">🔄 Làm mới danh sách</button>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <select id="captured-select" onchange="onSelectCaptured(this.value)">
+          <option value="">-- Chọn một request trong lịch sử bắt gói --</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid-2">
+      
+      <!-- Left: Request Editor -->
+      <div class="card">
+        <div class="card-title">
+          <span>📤 Sửa Request</span>
+          <button class="btn btn-secondary btn-sm" onclick="formatBodyJson()">✨ Prettify JSON Body</button>
+        </div>
+
+        <div class="url-bar">
+          <select id="req-method">
+            <option value="GET">GET</option>
+            <option value="POST" selected>POST</option>
+            <option value="PUT">PUT</option>
+            <option value="DELETE">DELETE</option>
+            <option value="PATCH">PATCH</option>
+            <option value="HEAD">HEAD</option>
+          </select>
+          <input type="text" id="req-url" placeholder="https://api-app.dc-cn.cn.ecouser.net/..." value="https://api-app.dc-cn.cn.ecouser.net/">
+          <button class="btn" id="send-btn" onclick="sendRequest()">🚀 Gửi</button>
+        </div>
+
+        <div class="input-group">
+          <label>Request Headers (JSON Object hoặc Raw Text)</label>
+          <textarea id="req-headers" rows="6" placeholder='{\n  "Content-Type": "application/json",\n  "User-Agent": "EcovacsApp/2.4.1"\n}'></textarea>
+        </div>
+
+        <div class="input-group">
+          <label>Request Body</label>
+          <textarea id="req-body" rows="10" placeholder='{\n  "key": "value"\n}'></textarea>
+        </div>
+      </div>
+
+      <!-- Right: Response Viewer -->
+      <div class="card">
+        <div class="card-title">
+          <span>📥 Kết quả phản hồi (Response)</span>
+          <span id="res-status-badge"></span>
+        </div>
+
+        <div class="res-meta" id="res-meta-box" style="display: none;">
+          <div>Mã phản hồi: <strong id="res-status">-</strong></div>
+          <div>Thời gian: <strong id="res-time">-</strong></div>
+          <div>Kích thước: <strong id="res-size">-</strong></div>
+        </div>
+
+        <div class="input-group">
+          <label>Response Headers</label>
+          <pre id="res-headers" style="max-height: 120px;">(Chưa có kết quả)</pre>
+        </div>
+
+        <div class="input-group res-body-box">
+          <label>Response Body</label>
+          <button class="copy-btn" onclick="copyResponse()">📋 Copy</button>
+          <pre id="res-body">(Chưa có kết quả, hãy bấm nút "Gửi" để thử nghiệm)</pre>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TAB 2: RULES -->
+  <div id="tab-rules" class="tab-content">
+    <div class="card">
+      <div class="card-title">
+        <span>⚡ Quy tắc Rewrite (Sửa Request/Response tự động khi đi qua Proxy)</span>
+        <div>
+          <button class="btn btn-secondary btn-sm" onclick="loadRules()">🔄 Nạp lại</button>
+          <button class="btn btn-sm" onclick="openNewRuleModal()">➕ Thêm Rule mới</button>
+        </div>
+      </div>
+      <p style="color: var(--text-muted); margin-bottom: 16px;">
+        Khi thiết bị (App điện thoại hoặc Robot) gửi request qua AnyProxy, AnyProxy sẽ tự động sửa đổi Header, Body của Request hoặc Response theo các quy tắc bên dưới trước khi chuyển tiếp.
+      </p>
+
+      <div id="rules-list">
+        <!-- Dynamic list -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let capturedList = [];
+    let rulesList = [];
+
+    function switchTab(name) {
+      document.querySelectorAll('.tabs-nav button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      if (name === 'composer') {
+        document.querySelector('.tabs-nav button:nth-child(1)').classList.add('active');
+        document.getElementById('tab-composer').classList.add('active');
+      } else {
+        document.querySelector('.tabs-nav button:nth-child(2)').classList.add('active');
+        document.getElementById('tab-rules').classList.add('active');
+        loadRules();
+      }
+    }
+
+    // Load captured requests into dropdown
+    async function loadCapturedRequests() {
+      try {
+        const res = await fetch('/api/composer/captured');
+        capturedList = await res.json();
+        const select = document.getElementById('captured-select');
+        select.innerHTML = '<option value="">-- Chọn một request trong lịch sử bắt gói (' + capturedList.length + ' requests) --</option>';
+        capturedList.forEach((req, idx) => {
+          const opt = document.createElement('option');
+          opt.value = idx;
+          opt.textContent = '[' + (req.method || 'GET') + '] ' + (req.statusCode || '-') + ' ' + (req.url || (req.host + req.path));
+          select.appendChild(opt);
+        });
+      } catch (e) {
+        console.error('Failed to load captured requests', e);
+      }
+    }
+
+    function onSelectCaptured(idx) {
+      if (idx === '' || !capturedList[idx]) return;
+      const item = capturedList[idx];
+      document.getElementById('req-method').value = item.method || 'GET';
+      const fullUrl = item.url || ((item.protocol || 'https') + '://' + item.host + (item.path || ''));
+      document.getElementById('req-url').value = fullUrl;
+
+      // Headers
+      if (item.reqHeader) {
+        try {
+          document.getElementById('req-headers').value = JSON.stringify(item.reqHeader, null, 2);
+        } catch (e) {
+          document.getElementById('req-headers').value = JSON.stringify(item.reqHeader);
+        }
+      }
+
+      // Body
+      document.getElementById('req-body').value = item.reqBody || '';
+    }
+
+    function formatBodyJson() {
+      const area = document.getElementById('req-body');
+      try {
+        const parsed = JSON.parse(area.value);
+        area.value = JSON.stringify(parsed, null, 2);
+      } catch (e) {
+        alert('Nội dung body không phải JSON hợp lệ!');
+      }
+    }
+
+    async function sendRequest() {
+      const btn = document.getElementById('send-btn');
+      const method = document.getElementById('req-method').value;
+      const url = document.getElementById('req-url').value.trim();
+      const headersStr = document.getElementById('req-headers').value.trim();
+      const body = document.getElementById('req-body').value;
+
+      let headers = {};
+      if (headersStr) {
+        try {
+          headers = JSON.parse(headersStr);
+        } catch (e) {
+          alert('Request Headers phải là định dạng JSON hợp lệ (Ví dụ: {"Content-Type": "application/json"})');
+          return;
+        }
+      }
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Đang gửi...';
+
+      try {
+        const res = await fetch('/api/composer/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ method, url, headers, body })
+        });
+        const data = await res.json();
+
+        const badge = document.getElementById('res-status-badge');
+        const metaBox = document.getElementById('res-meta-box');
+        metaBox.style.display = 'flex';
+
+        if (data.success) {
+          badge.className = 'badge ' + (data.statusCode < 400 ? 'badge-success' : 'badge-error');
+          badge.textContent = data.statusCode + ' ' + (data.statusMessage || '');
+          document.getElementById('res-status').textContent = data.statusCode;
+          document.getElementById('res-time').textContent = data.durationMs + ' ms';
+          document.getElementById('res-size').textContent = (data.bodySize || 0) + ' bytes';
+
+          document.getElementById('res-headers').textContent = JSON.stringify(data.headers, null, 2);
+          
+          if (data.isJson && data.json) {
+            document.getElementById('res-body').textContent = JSON.stringify(data.json, null, 2);
+          } else {
+            document.getElementById('res-body').textContent = data.body || '(Empty Body)';
+          }
+        } else {
+          badge.className = 'badge badge-error';
+          badge.textContent = 'FAILED';
+          document.getElementById('res-status').textContent = 'Error';
+          document.getElementById('res-time').textContent = data.durationMs + ' ms';
+          document.getElementById('res-size').textContent = '-';
+          document.getElementById('res-headers').textContent = '-';
+          document.getElementById('res-body').textContent = 'Lỗi gửi request: ' + (data.error || 'Unknown Error');
+        }
+      } catch (err) {
+        alert('Lỗi kết nối tới Composer server: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🚀 Gửi';
+      }
+    }
+
+    function copyResponse() {
+      const text = document.getElementById('res-body').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Đã sao chép Response Body vào clipboard!');
+      });
+    }
+
+    // Rules Management
+    async function loadRules() {
+      try {
+        const res = await fetch('/api/composer/rules');
+        rulesList = await res.json();
+        renderRules();
+      } catch (e) {
+        console.error('Failed to load rules', e);
+      }
+    }
+
+    function renderRules() {
+      const container = document.getElementById('rules-list');
+      if (!rulesList || !rulesList.length) {
+        container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px;">Chưa có Rule nào được tạo. Hãy bấm <b>"Thêm Rule mới"</b> ở trên.</div>';
+        return;
+      }
+      container.innerHTML = rulesList.map((r, idx) => {
+        const reqH = r.modifyRequestHeaders ? '<div>• Sửa Request Headers: ' + JSON.stringify(r.modifyRequestHeaders) + '</div>' : '';
+        const reqB = r.modifyRequestBody ? '<div>• Sửa Request Body: Mode ' + r.modifyRequestBody.mode + '</div>' : '';
+        const resS = r.modifyResponseStatusCode ? '<div>• Ghi đè Status Code: ' + r.modifyResponseStatusCode + '</div>' : '';
+        const resB = r.modifyResponseBody ? '<div>• Sửa Response Body: Mode ' + r.modifyResponseBody.mode + '</div>' : '';
+
+        return '<div class="rule-item">' +
+          '<div class="rule-item-header">' +
+            '<div>' +
+              '<strong style="font-size: 15px; color: var(--primary);">' + (r.name || 'Rule #' + (idx+1)) + '</strong>' +
+              '<span class="badge badge-get" style="margin-left: 8px;">' + (r.matchMethod || 'ALL') + '</span>' +
+              '<span style="font-family: monospace; color: var(--text-muted); margin-left: 8px;">' + (r.urlPattern || '*') + '</span>' +
+            '</div>' +
+            '<div style="display: flex; align-items: center; gap: 12px;">' +
+              '<label class="switch">' +
+                '<input type="checkbox" ' + (r.enabled ? 'checked' : '') + ' onchange="toggleRule(' + idx + ', this.checked)">' +
+                '<span class="slider"></span>' +
+              '</label>' +
+              '<button class="btn btn-secondary btn-sm" onclick="editRule(' + idx + ')">✏️ Sửa</button>' +
+              '<button class="btn btn-danger btn-sm" onclick="deleteRule(' + idx + ')">🗑️ Xóa</button>' +
+            '</div>' +
+          '</div>' +
+          '<div style="font-size: 12px; color: var(--text-muted);">' + reqH + reqB + resS + resB + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    async function toggleRule(idx, enabled) {
+      rulesList[idx].enabled = enabled;
+      await saveRulesToServer();
+    }
+
+    async function deleteRule(idx) {
+      if (confirm('Bạn có chắc muốn xóa Rule này?')) {
+        rulesList.splice(idx, 1);
+        await saveRulesToServer();
+        renderRules();
+      }
+    }
+
+    async function saveRulesToServer() {
+      await fetch('/api/composer/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rulesList)
+      });
+    }
+
+    function openNewRuleModal() {
+      const name = prompt('Nhập tên Rule:', 'Sửa Request Ecovacs');
+      if (!name) return;
+      const urlPattern = prompt('URL Pattern để khớp (Ví dụ: api-app.dc-cn.cn.ecouser.net):', 'api-app.dc-cn.cn.ecouser.net');
+      if (!urlPattern) return;
+      
+      const newRule = {
+        id: 'rule_' + Date.now(),
+        name: name,
+        enabled: true,
+        matchMethod: 'ALL',
+        urlPattern: urlPattern,
+        isRegex: false,
+        modifyRequestHeaders: null,
+        modifyRequestBody: null,
+        modifyResponseStatusCode: null,
+        modifyResponseBody: null
+      };
+
+      const wantModifyReqHeader = confirm('Bạn có muốn thêm/sửa Request Header không?');
+      if (wantModifyReqHeader) {
+        const headerJson = prompt('Nhập Header cần thêm/sửa dạng JSON (Ví dụ: {"Authorization": "Bearer 123"}):', '{"User-Agent": "Custom-Agent"}');
+        try { newRule.modifyRequestHeaders = JSON.parse(headerJson); } catch (e) {}
+      }
+
+      const wantModifyReqBody = confirm('Bạn có muốn sửa Request Body (thay thế chuỗi) không?');
+      if (wantModifyReqBody) {
+        const search = prompt('Chuỗi cần tìm trong Request Body:', '');
+        const replace = prompt('Chuỗi thay thế vào Request Body:', '');
+        if (search) {
+          newRule.modifyRequestBody = { mode: 'replace', search: search, replace: replace };
+        }
+      }
+
+      const wantModifyResBody = confirm('Bạn có muốn sửa/mock Response Body không?');
+      if (wantModifyResBody) {
+        const mockBody = prompt('Nhập nội dung Response Body mới (JSON hoặc text):', '{"code": 0, "msg": "success"}');
+        if (mockBody) {
+          newRule.modifyResponseBody = { mode: 'full', content: mockBody };
+        }
+      }
+
+      rulesList.push(newRule);
+      saveRulesToServer().then(renderRules);
+    }
+
+    function editRule(idx) {
+      const rule = rulesList[idx];
+      const jsonStr = prompt('Chỉnh sửa Rule chi tiết dạng JSON:', JSON.stringify(rule, null, 2));
+      if (jsonStr) {
+        try {
+          rulesList[idx] = JSON.parse(jsonStr);
+          saveRulesToServer().then(renderRules);
+        } catch (e) {
+          alert('JSON không hợp lệ: ' + e.message);
+        }
+      }
+    }
+
+    async function loadRecordById(id) {
+      try {
+        const res = await fetch('/api/composer/record?id=' + encodeURIComponent(id));
+        const item = await res.json();
+        if (item && item.url) {
+          document.getElementById('req-method').value = item.method || 'GET';
+          document.getElementById('req-url').value = item.url;
+          if (item.headers) {
+            document.getElementById('req-headers').value = JSON.stringify(item.headers, null, 2);
+          }
+          document.getElementById('req-body').value = item.reqBody || '';
+        }
+      } catch (e) {
+        console.error('Failed to load record by id:', e);
+      }
+    }
+
+    // Init
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetRecordId = urlParams.get('id');
+    if (targetRecordId) {
+      loadRecordById(targetRecordId);
+    }
+    loadCapturedRequests();
+  </script>
+</body>
+</html>

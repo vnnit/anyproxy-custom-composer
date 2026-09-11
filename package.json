@@ -1,0 +1,26 @@
+{
+  "name": "anyproxy-custom-composer",
+  "version": "1.0.0",
+  "description": "Custom AnyProxy with SSL Inspection, Interactive Web Composer, IF-ELSE Mock Rewrite Rules and Dynamic Rule Hot-Reload",
+  "main": "start.js",
+  "scripts": {
+    "postinstall": "node patch.js",
+    "patch": "node patch.js",
+    "init-cert": "node initCert.js",
+    "start": "node start.js"
+  },
+  "keywords": [
+    "anyproxy",
+    "proxy",
+    "ssl-mitm",
+    "composer",
+    "mock",
+    "rewrite-rules",
+    "ecovacs"
+  ],
+  "author": "vnnit",
+  "license": "MIT",
+  "dependencies": {
+    "anyproxy": "^4.1.3"
+  }
+}
