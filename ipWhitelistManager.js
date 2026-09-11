@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { exec } = require('child_process');
 
 const WHITELIST_FILE = path.resolve(__dirname, 'ip_whitelist.json');
 
@@ -14,11 +15,35 @@ let config = {
   ]
 };
 
+function syncFirewallRule() {
+  if (process.platform !== 'win32') return;
+
+  const allowed = (config.allowedIps || []).filter(ip => ip && ip !== '127.0.0.1');
+  let ipList;
+  if (!config.enabled) {
+    ipList = "'Any'";
+  } else {
+    const validIps = ['127.0.0.1', ...allowed].filter(ip => !ip.includes('*'));
+    if (validIps.length === 0) validIps.push('127.0.0.1');
+    ipList = validIps.map(ip => `'${ip}'`).join(',');
+  }
+
+  const psCmd = `powershell -Command "Set-NetFirewallRule -Name 'AnyProxy_Port_8001' -RemoteAddress @(${ipList}) -ErrorAction SilentlyContinue"`;
+  exec(psCmd, (err) => {
+    if (err) {
+      console.error('[Firewall Sync Error]:', err.message);
+    } else {
+      console.log(`[Firewall Synced] Port 8001 allowed remote IPs: ${ipList}`);
+    }
+  });
+}
+
 function loadConfig() {
   try {
     if (fs.existsSync(WHITELIST_FILE)) {
       const data = fs.readFileSync(WHITELIST_FILE, 'utf8');
       config = Object.assign({}, config, JSON.parse(data));
+      syncFirewallRule();
     } else {
       saveConfig();
     }
@@ -30,6 +55,7 @@ function loadConfig() {
 function saveConfig() {
   try {
     fs.writeFileSync(WHITELIST_FILE, JSON.stringify(config, null, 2), 'utf8');
+    syncFirewallRule();
   } catch (e) {
     console.error('[IpWhitelist] Error saving whitelist config:', e.message);
   }

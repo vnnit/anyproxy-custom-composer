@@ -19,7 +19,21 @@ module.exports = {
     const proto = requestDetail.protocol || 'http';
     const host = (requestDetail.requestOptions && requestDetail.requestOptions.hostname) || '';
     const pathStr = (requestDetail.requestOptions && requestDetail.requestOptions.path) || '';
+    const port = (requestDetail.requestOptions && requestDetail.requestOptions.port) || (proto === 'https' ? 443 : 80);
     const method = (requestDetail.requestOptions && requestDetail.requestOptions.method) || 'GET';
+
+    // Prevent recursive proxy loops to proxy itself
+    if ((host === '144.202.92.46' || host === '127.0.0.1' || host === 'localhost') && (port == 8001 || port == 8002)) {
+      console.warn(`[Proxy Loop Blocked] Rejected recursive request to self: ${host}:${port}`);
+      return {
+        response: {
+          statusCode: 400,
+          header: { 'content-type': 'text/plain' },
+          body: 'Bad Request: Recursive proxy loop to self is blocked.'
+        }
+      };
+    }
+
     console.log(`[${proto.toUpperCase()}] ${method} ${proto}://${host}${pathStr}`);
 
     // 1. Run external rule if defined and active
