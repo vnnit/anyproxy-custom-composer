@@ -193,7 +193,7 @@
 
     modal = document.createElement('div');
     modal.id = 'mock-response-modal';
-    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:9999999;display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px);';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:20000000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px);';
     
     modal.innerHTML = `
       <div style="background:#1e293b;border:1px solid #475569;border-radius:12px;width:90%;max-width:850px;max-height:92vh;display:flex;flex-direction:column;color:#f8fafc;font-family:system-ui,-apple-system,sans-serif;box-shadow:0 25px 50px -12px rgba(0,0,0,0.7);">
@@ -362,7 +362,7 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
 
     modal = document.createElement('div');
     modal.id = 'rules-manager-modal';
-    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:9999999;display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px);';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:10000000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px);';
 
     modal.innerHTML = `
       <div style="background:#1e293b;border:1px solid #475569;border-radius:12px;width:90%;max-width:950px;max-height:90vh;display:flex;flex-direction:column;color:#f8fafc;font-family:system-ui,-apple-system,sans-serif;box-shadow:0 25px 50px -12px rgba(0,0,0,0.7);">
@@ -685,6 +685,7 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
   window.openResponseMockModal = async function(recordId) {
     const modal = getMockModal();
     modal.style.display = 'flex';
+    modal.style.zIndex = '20000000';
     modal.dataset.editingRuleId = '';
     modal.dataset.condMode = 'simple';
 
@@ -1261,6 +1262,7 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
 
       const modal = getMockModal();
       modal.style.display = 'flex';
+      modal.style.zIndex = '20000000';
       modal.dataset.editingRuleId = r.id || ('rule_' + idx);
 
       document.getElementById('mock-rule-name').value = r.name || '';
