@@ -11,6 +11,9 @@ node_modules/
 external_rule_config.json
 rewrite_rules.json
 ip_whitelist.json
+*ruler*.js
+glab*.js
+akia*.js
 
 # Logs
 *.log
