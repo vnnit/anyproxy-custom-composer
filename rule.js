@@ -10,6 +10,19 @@ module.exports = {
 
   // Force intercept all HTTPS requests
   *beforeDealHttpsRequest(requestDetail) {
+    const activeRules = rulesManager.getActiveExternalRules();
+    for (const item of activeRules) {
+      if (item.module && item.module.beforeDealHttpsRequest) {
+        try {
+          const res = yield item.module.beforeDealHttpsRequest(requestDetail);
+          if (typeof res === 'boolean') {
+            if (res) return true;
+          }
+        } catch (err) {
+          console.error(`[ExternalRule ${item.name} beforeDealHttpsRequest Error]:`, err.message || err);
+        }
+      }
+    }
     console.log(`[SSL Intercept] Intercepting HTTPS -> ${requestDetail.host}`);
     return true;
   },
@@ -36,17 +49,19 @@ module.exports = {
 
     console.log(`[${proto.toUpperCase()}] ${method} ${proto}://${host}${pathStr}`);
 
-    // 1. Run external rule if defined and active
-    const extRule = rulesManager.getActiveExternalRule();
-    if (extRule && extRule.beforeSendRequest) {
-      try {
-        const extReq = yield extRule.beforeSendRequest(requestDetail);
-        if (extReq) {
-          console.log(`[ExternalRule Applied] Modified request -> ${proto}://${host}${pathStr}`);
-          return extReq;
+    // 1. Run all active external rules in order
+    const activeRules = rulesManager.getActiveExternalRules();
+    for (const item of activeRules) {
+      if (item.module && item.module.beforeSendRequest) {
+        try {
+          const extReq = yield item.module.beforeSendRequest(requestDetail);
+          if (extReq) {
+            console.log(`[ExternalRule Applied: ${item.name}] Modified request -> ${proto}://${host}${pathStr}`);
+            return extReq;
+          }
+        } catch (err) {
+          console.error(`[ExternalRule ${item.name} beforeSendRequest Error]:`, err.message || err);
         }
-      } catch (err) {
-        console.error('[ExternalRule beforeSendRequest Error]:', err.message || err);
       }
     }
 
@@ -66,17 +81,19 @@ module.exports = {
     const pathStr = (requestDetail.requestOptions && requestDetail.requestOptions.path) || '';
     console.log(`[RESP ${statusCode}] ${host}${pathStr}`);
 
-    // 1. Run external rule if defined and active
-    const extRule = rulesManager.getActiveExternalRule();
-    if (extRule && extRule.beforeSendResponse) {
-      try {
-        const extRes = yield extRule.beforeSendResponse(requestDetail, responseDetail);
-        if (extRes) {
-          console.log(`[ExternalRule Applied] Modified response for -> ${requestDetail.url}`);
-          return extRes;
+    // 1. Run all active external rules in order
+    const activeRules = rulesManager.getActiveExternalRules();
+    for (const item of activeRules) {
+      if (item.module && item.module.beforeSendResponse) {
+        try {
+          const extRes = yield item.module.beforeSendResponse(requestDetail, responseDetail);
+          if (extRes) {
+            console.log(`[ExternalRule Applied: ${item.name}] Modified response for -> ${requestDetail.url}`);
+            return extRes;
+          }
+        } catch (err) {
+          console.error(`[ExternalRule ${item.name} beforeSendResponse Error]:`, err.message || err);
         }
-      } catch (err) {
-        console.error('[ExternalRule beforeSendResponse Error]:', err.message || err);
       }
     }
 

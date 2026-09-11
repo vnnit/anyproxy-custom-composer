@@ -354,30 +354,57 @@ function modifyResponse(requestDetail, responseDetail) {
 }
 
 // -------------------------------------------------------------
-// External Rule File Manager (Dynamic rule .js selection)
+// External Rule Files Manager (Multiple dynamic .js rules)
 // -------------------------------------------------------------
 const EXT_CONFIG_FILE = path.resolve(__dirname, 'external_rule_config.json');
 
-let externalRuleConfig = {
-  enabled: false,
-  rulePath: '',
-  recentPaths: []
-};
+let externalRules = [];
 
 function loadExtConfig() {
   try {
     if (fs.existsSync(EXT_CONFIG_FILE)) {
       const data = fs.readFileSync(EXT_CONFIG_FILE, 'utf8');
-      externalRuleConfig = Object.assign({}, externalRuleConfig, JSON.parse(data));
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed.rules)) {
+        externalRules = parsed.rules;
+      } else if (Array.isArray(parsed)) {
+        externalRules = parsed;
+      } else if (parsed && typeof parsed === 'object') {
+        // Migration from legacy { enabled, rulePath, recentPaths }
+        externalRules = [];
+        if (parsed.rulePath) {
+          const normPath = parsed.rulePath.replace(/\\/g, '/');
+          externalRules.push({
+            id: 'ext_rule_1',
+            name: path.basename(normPath) || 'rule.js',
+            path: normPath,
+            enabled: !!parsed.enabled
+          });
+        }
+        if (Array.isArray(parsed.recentPaths)) {
+          parsed.recentPaths.forEach((p, idx) => {
+            const normP = p.replace(/\\/g, '/');
+            if (!externalRules.some(r => r.path === normP)) {
+              externalRules.push({
+                id: 'ext_rule_' + (idx + 2),
+                name: path.basename(normP) || `rule_${idx + 2}.js`,
+                path: normP,
+                enabled: false
+              });
+            }
+          });
+        }
+      }
     }
   } catch (e) {
     console.error('[RulesManager] Failed to load external rule config:', e.message);
+    externalRules = [];
   }
 }
 
 function saveExtConfig() {
   try {
-    fs.writeFileSync(EXT_CONFIG_FILE, JSON.stringify(externalRuleConfig, null, 2), 'utf8');
+    fs.writeFileSync(EXT_CONFIG_FILE, JSON.stringify({ rules: externalRules }, null, 2), 'utf8');
   } catch (e) {
     console.error('[RulesManager] Failed to save external rule config:', e.message);
   }
@@ -385,65 +412,116 @@ function saveExtConfig() {
 
 loadExtConfig();
 
-function getExternalRuleConfig() {
-  const filePath = externalRuleConfig.rulePath || '';
-  const fileExists = fs.existsSync(filePath);
-  let summary = '';
-  let loadError = null;
+function getExternalRulesList() {
+  return externalRules.map(r => {
+    const fileExists = fs.existsSync(r.path);
+    let summary = '';
+    let loadError = null;
 
-  if (fileExists) {
+    if (fileExists) {
+      try {
+        const resolved = path.resolve(r.path);
+        delete require.cache[require.resolve(resolved)];
+        const mod = require(resolved);
+        summary = mod.summary || 'Custom AnyProxy Rule Module';
+      } catch (e) {
+        loadError = e.message;
+      }
+    }
+
+    return {
+      id: r.id,
+      name: r.name || path.basename(r.path),
+      path: r.path,
+      enabled: !!r.enabled,
+      fileExists,
+      summary,
+      loadError
+    };
+  });
+}
+
+function toggleExternalRule(id, enabled) {
+  const rule = externalRules.find(r => r.id === id);
+  if (rule) {
+    rule.enabled = !!enabled;
+    saveExtConfig();
+  }
+  return getExternalRulesList();
+}
+
+function addExternalRule(rulePath, name) {
+  if (!rulePath || typeof rulePath !== 'string') return getExternalRulesList();
+  const normPath = rulePath.trim().replace(/\\/g, '/');
+  const existing = externalRules.find(r => r.path.toLowerCase() === normPath.toLowerCase());
+  if (existing) {
+    existing.enabled = true;
+    if (name) existing.name = name;
+  } else {
+    externalRules.push({
+      id: 'ext_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      name: name || path.basename(normPath) || 'custom_rule.js',
+      path: normPath,
+      enabled: true
+    });
+  }
+  saveExtConfig();
+  return getExternalRulesList();
+}
+
+function removeExternalRule(id) {
+  externalRules = externalRules.filter(r => r.id !== id);
+  saveExtConfig();
+  return getExternalRulesList();
+}
+
+function getActiveExternalRules() {
+  const active = [];
+  for (const r of externalRules) {
+    if (!r.enabled || !r.path) continue;
     try {
-      const resolved = path.resolve(filePath);
+      const resolved = path.resolve(r.path);
+      if (!fs.existsSync(resolved)) continue;
       delete require.cache[require.resolve(resolved)];
       const mod = require(resolved);
-      summary = mod.summary || 'Custom AnyProxy Rule Module';
+      active.push({
+        id: r.id,
+        name: r.name || path.basename(r.path),
+        path: r.path,
+        module: mod
+      });
     } catch (e) {
-      loadError = e.message;
+      console.error(`[RulesManager] Error loading external rule "${r.name}":`, e.message);
     }
   }
+  return active;
+}
 
+// Backward compatibility helpers
+function getExternalRuleConfig() {
+  const list = getExternalRulesList();
+  const firstActive = list.find(r => r.enabled) || list[0];
   return {
-    enabled: externalRuleConfig.enabled,
-    rulePath: externalRuleConfig.rulePath,
-    recentPaths: externalRuleConfig.recentPaths || [],
-    fileExists,
-    summary,
-    loadError
+    enabled: list.some(r => r.enabled),
+    rulePath: firstActive ? firstActive.path : '',
+    recentPaths: list.map(r => r.path),
+    fileExists: firstActive ? firstActive.fileExists : false,
+    summary: firstActive ? firstActive.summary : '',
+    loadError: firstActive ? firstActive.loadError : null,
+    rules: list
   };
 }
 
 function setExternalRuleConfig(config) {
-  if (typeof config.enabled === 'boolean') {
-    externalRuleConfig.enabled = config.enabled;
+  if (config && config.rulePath) {
+    addExternalRule(config.rulePath);
   }
-  if (config.rulePath && typeof config.rulePath === 'string') {
-    const p = config.rulePath.trim();
-    externalRuleConfig.rulePath = p;
-    if (!externalRuleConfig.recentPaths) externalRuleConfig.recentPaths = [];
-    if (!externalRuleConfig.recentPaths.includes(p)) {
-      externalRuleConfig.recentPaths.unshift(p);
-      if (externalRuleConfig.recentPaths.length > 10) {
-        externalRuleConfig.recentPaths = externalRuleConfig.recentPaths.slice(0, 10);
-      }
-    }
-  }
-  saveExtConfig();
   return getExternalRuleConfig();
 }
 
 function getActiveExternalRule() {
-  if (!externalRuleConfig.enabled || !externalRuleConfig.rulePath) {
-    return null;
-  }
-  try {
-    const resolved = path.resolve(externalRuleConfig.rulePath);
-    if (!fs.existsSync(resolved)) return null;
-    delete require.cache[require.resolve(resolved)];
-    return require(resolved);
-  } catch (e) {
-    console.error('[RulesManager] Error loading external rule:', e.message);
-    return null;
-  }
+  const list = getActiveExternalRules();
+  return list.length > 0 ? list[0].module : null;
 }
 
 module.exports = {
@@ -451,6 +529,11 @@ module.exports = {
   setRules,
   modifyRequest,
   modifyResponse,
+  getExternalRulesList,
+  toggleExternalRule,
+  addExternalRule,
+  removeExternalRule,
+  getActiveExternalRules,
   getExternalRuleConfig,
   setExternalRuleConfig,
   getActiveExternalRule

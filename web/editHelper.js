@@ -1,6 +1,16 @@
 (function() {
   let activeRecordId = null;
 
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   // Track clicked row ID in the table
   document.addEventListener('click', function(e) {
     const tr = e.target.closest('tr');
@@ -383,42 +393,33 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
           <button id="tab-btn-whitelist" onclick="switchManagerSubTab('whitelist')" style="background:none;border:none;color:#94a3b8;font-size:14px;font-weight:bold;padding:8px 16px;cursor:pointer;border-bottom:2px solid transparent;">🛡️ Whitelist IP (Port 8001)</button>
         </div>
 
-        <!-- Tab 1: File Rule .JS -->
+        <!-- Tab 1: File Rule .JS (Quản lý nhiều rule .JS) -->
         <div id="subtab-filerule" style="padding:18px 20px;overflow-y:auto;flex:1;">
+          <!-- Khung thêm file rule mới -->
           <div style="background:#111827;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:16px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <input type="checkbox" id="ext-rule-enabled" onchange="applyExternalRuleFile()" style="width:18px;height:18px;cursor:pointer;">
-                <label for="ext-rule-enabled" style="font-size:14px;font-weight:bold;color:#f8fafc;cursor:pointer;">☑️ Bật File Rule .JS Này</label>
-              </div>
-              <span id="ext-rule-status-badge" style="font-size:12px;padding:3px 10px;border-radius:4px;font-weight:bold;">Đang kiểm tra...</span>
+            <div style="font-size:13px;font-weight:bold;color:#f8fafc;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+              <span>➕ THÊM FILE RULE (.JS) MỚI</span>
+              <span style="font-size:11px;color:#94a3b8;font-weight:normal;">(Chạy đồng thời nhiều file, bật/tắt độc lập từng file)</span>
             </div>
+            <div style="display:flex;gap:8px;margin-bottom:10px;">
+              <input id="ext-rule-new-path" type="text" style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#f8fafc;padding:8px 12px;font-family:monospace;font-size:13px;" placeholder="Ví dụ: C:\\rules\\glab-ruler.js hoặc C:\\xampp\\htdocs\\akiaEcovacs\\akiaEcovacs.js">
+              <button onclick="addNewExternalRule()" style="background:#38bdf8;color:#0f172a;font-weight:bold;border:none;border-radius:6px;padding:8px 18px;cursor:pointer;white-space:nowrap;font-size:13px;">➕ Thêm Rule</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:#94a3b8;">
+              <span>Gợi ý thêm nhanh:</span>
+              <button onclick="quickAddExternalRule('C:/Users/Administrator/Documents/Antigravity/Ecovacs Home/AnyProxy_42d2860c/glab-ruler.js')" style="background:#1e293b;border:1px solid #475569;border-radius:4px;color:#38bdf8;padding:3px 8px;font-size:11px;font-family:monospace;cursor:pointer;">📄 glab-ruler.js</button>
+              <button onclick="quickAddExternalRule('C:/xampp/htdocs/akiaEcovacs/akiaEcovacs.js')" style="background:#1e293b;border:1px solid #475569;border-radius:4px;color:#38bdf8;padding:3px 8px;font-size:11px;font-family:monospace;cursor:pointer;">📄 akiaEcovacs.js</button>
+            </div>
+          </div>
 
-            <div style="margin-bottom:12px;">
-              <label style="display:block;font-size:12px;color:#94a3b8;font-weight:bold;margin-bottom:4px;">ĐƯỜNG DẪN FILE RULE (.JS) TRÊN MÁY BẠN</label>
-              <div style="display:flex;gap:8px;">
-                <input id="ext-rule-path-input" type="text" style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#f8fafc;padding:8px 12px;font-family:monospace;font-size:13px;" placeholder="Ví dụ: C:\\rules\\my_custom_rule.js">
-                <button onclick="applyExternalRuleFile()" style="background:#38bdf8;color:#0f172a;font-weight:bold;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;white-space:nowrap;">🔄 Áp Dụng Ngay</button>
-              </div>
-            </div>
+          <!-- Danh sách file rule -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <span style="font-size:13px;font-weight:bold;color:#cbd5e1;">📋 DANH SÁCH FILE RULE .JS (<span id="ext-rules-count">0</span>)</span>
+            <button onclick="loadExternalRuleInfo()" style="background:none;border:none;color:#38bdf8;font-size:12px;cursor:pointer;">🔄 Làm mới</button>
+          </div>
 
-            <div id="ext-rule-recents" style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <span style="font-size:12px;color:#94a3b8;">Gợi ý file gần đây:</span>
-              <!-- populated dynamically -->
-            </div>
-
-            <div id="ext-rule-summary-box" style="background:#090d16;border:1px solid #1e293b;border-radius:6px;padding:10px 14px;font-size:12px;color:#94a3b8;margin-bottom:12px;">
-              Tên Rule: <strong id="ext-rule-summary" style="color:#38bdf8;">-</strong>
-            </div>
-
-            <!-- Code Editor Toggle -->
-            <div>
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                <button onclick="toggleRuleCodeEditor()" style="background:#334155;color:#f8fafc;border:none;padding:4px 12px;border-radius:4px;font-size:12px;cursor:pointer;">👁️ Xem / Sửa Code File Trực Tiếp</button>
-                <button id="ext-rule-save-code-btn" onclick="saveRuleCodeFile()" style="display:none;background:#22c55e;color:#0f172a;border:none;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:bold;cursor:pointer;">💾 Lưu Code Lại Vào File</button>
-              </div>
-              <textarea id="ext-rule-code-area" rows="14" style="display:none;width:100%;background:#090d16;border:1px solid #334155;border-radius:6px;color:#e2e8f0;padding:10px;font-family:monospace;font-size:12px;"></textarea>
-            </div>
+          <div id="ext-rules-list-container" style="display:flex;flex-direction:column;gap:12px;">
+            <div style="text-align:center;padding:20px;color:#94a3b8;">Đang tải danh sách file rule...</div>
           </div>
         </div>
 
@@ -834,126 +835,202 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
     }
   };
 
+  // -----------------------------------------------------------
+  // Multi-rule .JS management functions
+  // -----------------------------------------------------------
   window.loadExternalRuleInfo = async function() {
-    const chk = document.getElementById('ext-rule-enabled');
-    const pathInput = document.getElementById('ext-rule-path-input');
-    const badge = document.getElementById('ext-rule-status-badge');
-    const summary = document.getElementById('ext-rule-summary');
-    const recentsDiv = document.getElementById('ext-rule-recents');
+    const listContainer = document.getElementById('ext-rules-list-container');
+    const countEl = document.getElementById('ext-rules-count');
+    if (!listContainer) return;
 
     try {
-      const res = await fetch('/api/composer/external-rule');
+      const res = await fetch('/api/composer/external-rules');
       const data = await res.json();
-      if (!data) return;
+      if (!data || !data.success) return;
 
-      chk.checked = !!data.enabled;
-      if (!pathInput.value || pathInput.value !== data.rulePath) {
-        pathInput.value = data.rulePath || '';
+      const rules = data.rules || [];
+      if (countEl) countEl.textContent = rules.length;
+
+      if (!rules.length) {
+        listContainer.innerHTML = `
+          <div style="background:#111827;border:1px dashed #334155;border-radius:8px;padding:24px;text-align:center;color:#94a3b8;">
+            <div style="font-size:24px;margin-bottom:8px;">📂</div>
+            <div style="font-size:14px;font-weight:bold;color:#cbd5e1;margin-bottom:4px;">Chưa có file Rule .JS nào</div>
+            <div style="font-size:12px;">Nhập đường dẫn file .js ở ô trên hoặc bấm vào "Gợi ý thêm nhanh" để thêm rule.</div>
+          </div>
+        `;
+        return;
       }
 
-      if (data.enabled) {
-        if (data.fileExists) {
-          badge.style.background = '#065f46';
-          badge.style.color = '#34d399';
-          badge.textContent = '🟢 ĐANG BẬT & ÁP DỤNG';
-        } else {
-          badge.style.background = '#991b1b';
-          badge.style.color = '#f87171';
-          badge.textContent = '🔴 FILE KHÔNG TỒN TẠI';
+      listContainer.innerHTML = rules.map(r => {
+        let badgeStyle = 'background:#374151;color:#9ca3af;';
+        let badgeText = '⚪ ĐANG TẮT';
+
+        if (r.enabled) {
+          if (r.fileExists) {
+            badgeStyle = 'background:#065f46;color:#34d399;';
+            badgeText = '🟢 ĐANG BẬT & ÁP DỤNG';
+          } else {
+            badgeStyle = 'background:#991b1b;color:#f87171;';
+            badgeText = '🔴 FILE KHÔNG TỒN TẠI';
+          }
         }
-      } else {
-        badge.style.background = '#374151';
-        badge.style.color = '#9ca3af';
-        badge.textContent = '⚪ ĐANG TẮT (Check để bật)';
-      }
 
-      summary.textContent = data.summary ? data.summary : (data.loadError ? 'Lỗi nạp module: ' + data.loadError : (data.fileExists ? 'Sẵn sàng nạp' : 'Chưa tìm thấy file'));
+        const safePath = (r.path || '').replace(/\\/g, '/');
+        const safeEscapedPath = safePath.replace(/'/g, "\\'");
+        const safeName = (r.name || safePath.split('/').pop() || 'rule.js').replace(/'/g, "\\'");
 
-      if (data.recentPaths && data.recentPaths.length) {
-        recentsDiv.innerHTML = '<span style="font-size:12px;color:#94a3b8;">Gợi ý file gần đây:</span>' + 
-          data.recentPaths.map(p => `
-            <button onclick="selectRecentRulePath('${p.replace(/\\/g, '\\\\')}')" style="background:#1e293b;border:1px solid #475569;border-radius:4px;color:#cbd5e1;padding:3px 8px;font-size:11px;font-family:monospace;cursor:pointer;">
-              📄 ${p.split(/[\\/]/).pop()}
-            </button>
-          `).join('');
-      }
+        return `
+          <div style="background:#111827;border:1px solid ${r.enabled ? '#059669' : '#334155'};border-radius:8px;padding:14px 16px;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+              <!-- Checkbox & Tên Rule -->
+              <div style="display:flex;align-items:center;gap:10px;">
+                <input type="checkbox" id="chk_ext_${r.id}" onchange="toggleExternalRuleItem('${r.id}', this.checked)" ${r.enabled ? 'checked' : ''} style="width:20px;height:20px;cursor:pointer;accent-color:#10b981;">
+                <label for="chk_ext_${r.id}" style="font-size:15px;font-weight:bold;color:#f8fafc;cursor:pointer;display:flex;align-items:center;gap:6px;">
+                  📄 <span>${escapeHtml(r.name)}</span>
+                </label>
+                <span style="font-size:11px;padding:2px 8px;border-radius:4px;font-weight:bold;${badgeStyle}">
+                  ${badgeText}
+                </span>
+              </div>
+
+              <!-- Nút Thao Tác -->
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button onclick="toggleExtRuleEditor('${r.id}', '${safeEscapedPath}')" style="background:#334155;color:#f8fafc;border:none;padding:5px 12px;border-radius:4px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                  👁️ Xem / Sửa Code
+                </button>
+                <button onclick="removeExternalRuleItem('${r.id}', '${safeName}')" style="background:#dc2626;color:white;border:none;padding:5px 10px;border-radius:4px;font-size:12px;cursor:pointer;">
+                  🗑️ Xóa
+                </button>
+              </div>
+            </div>
+
+            <!-- Đường dẫn file & Mô tả -->
+            <div style="background:#090d16;border:1px solid #1e293b;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+              <div style="font-family:monospace;font-size:12px;color:#94a3b8;word-break:break-all;">
+                📁 ${escapeHtml(r.path)}
+              </div>
+              <div style="font-size:11px;color:#38bdf8;white-space:nowrap;">
+                ${r.summary ? 'ℹ️ ' + escapeHtml(r.summary) : (r.loadError ? '⚠️ ' + escapeHtml(r.loadError) : '')}
+              </div>
+            </div>
+
+            <!-- Khung Code Editor Thu/Gọn -->
+            <div id="editor-wrap-${r.id}" style="display:none;margin-top:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-size:12px;color:#cbd5e1;font-weight:bold;">📝 Soạn thảo code trực tiếp trong file:</span>
+                <button onclick="saveExtRuleCode('${r.id}', '${safeEscapedPath}')" style="background:#22c55e;color:#0f172a;border:none;padding:5px 14px;border-radius:4px;font-size:12px;font-weight:bold;cursor:pointer;">
+                  💾 Lưu Code Vào File
+                </button>
+              </div>
+              <textarea id="codearea-${r.id}" rows="14" style="width:100%;background:#090d16;border:1px solid #334155;border-radius:6px;color:#e2e8f0;padding:10px;font-family:monospace;font-size:12px;line-height:1.5;box-sizing:border-box;"></textarea>
+            </div>
+          </div>
+        `;
+      }).join('');
     } catch(e) {
       console.error('Lỗi loadExternalRuleInfo:', e);
+      listContainer.innerHTML = '<div style="color:#ef4444;padding:16px;">Lỗi tải danh sách rule: ' + e.message + '</div>';
     }
   };
 
-  window.selectRecentRulePath = function(p) {
-    document.getElementById('ext-rule-path-input').value = p;
-    applyExternalRuleFile();
+  window.toggleExternalRuleItem = async function(id, enabled) {
+    try {
+      const res = await fetch('/api/composer/external-rules/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, enabled })
+      });
+      const data = await res.json();
+      if (data.success) {
+        await loadExternalRuleInfo();
+      }
+    } catch(e) {
+      alert('Lỗi cập nhật trạng thái rule: ' + e.message);
+    }
   };
 
-  window.applyExternalRuleFile = async function() {
-    const enabled = document.getElementById('ext-rule-enabled').checked;
-    const rulePath = document.getElementById('ext-rule-path-input').value.trim();
+  window.addNewExternalRule = async function() {
+    const input = document.getElementById('ext-rule-new-path');
+    const pathVal = input ? input.value.trim() : '';
 
-    if (!rulePath) {
+    if (!pathVal) {
       alert('Vui lòng nhập đường dẫn file .js!');
       return;
     }
 
     try {
-      const res = await fetch('/api/composer/external-rule', {
+      const res = await fetch('/api/composer/external-rules/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled, rulePath })
+        body: JSON.stringify({ path: pathVal })
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (input) input.value = '';
+        await loadExternalRuleInfo();
+      } else {
+        alert('Lỗi: ' + (data.error || 'Không thể thêm rule'));
+      }
+    } catch(e) {
+      alert('Lỗi thêm rule: ' + e.message);
+    }
+  };
+
+  window.quickAddExternalRule = function(rulePath) {
+    const input = document.getElementById('ext-rule-new-path');
+    if (input) input.value = rulePath;
+    addNewExternalRule();
+  };
+
+  window.removeExternalRuleItem = async function(id, name) {
+    if (!confirm('Bạn có chắc muốn xóa file rule "' + name + '" khỏi danh sách?\n(Lưu ý: File thực tế trên ổ cứng KHÔNG bị xóa)')) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/composer/external-rules/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
       });
       const data = await res.json();
       if (data.success) {
         await loadExternalRuleInfo();
-        const codeArea = document.getElementById('ext-rule-code-area');
-        if (codeArea && codeArea.style.display !== 'none') {
-          loadRuleCodeContent(rulePath);
+      }
+    } catch(e) {
+      alert('Lỗi xóa rule: ' + e.message);
+    }
+  };
+
+  window.toggleExtRuleEditor = async function(id, filePath) {
+    const wrap = document.getElementById('editor-wrap-' + id);
+    const textarea = document.getElementById('codearea-' + id);
+    if (!wrap || !textarea) return;
+
+    if (wrap.style.display === 'none' || !wrap.style.display) {
+      wrap.style.display = 'block';
+      textarea.value = '// Đang tải nội dung file...';
+      try {
+        const res = await fetch('/api/composer/read-rule-file?filePath=' + encodeURIComponent(filePath));
+        const data = await res.json();
+        if (data.success) {
+          textarea.value = data.content;
+        } else {
+          textarea.value = '// Lỗi đọc file: ' + (data.error || 'Unknown error');
         }
+      } catch(e) {
+        textarea.value = '// Lỗi kết nối: ' + e.message;
       }
-    } catch(e) {
-      alert('Lỗi áp dụng rule: ' + e.message);
-    }
-  };
-
-  async function loadRuleCodeContent(filePath) {
-    const codeArea = document.getElementById('ext-rule-code-area');
-    try {
-      const res = await fetch('/api/composer/read-rule-file?filePath=' + encodeURIComponent(filePath));
-      const data = await res.json();
-      if (data.success) {
-        codeArea.value = data.content;
-      } else {
-        codeArea.value = '// Lỗi đọc file: ' + (data.error || 'Unknown error');
-      }
-    } catch(e) {
-      codeArea.value = '// Lỗi kết nối: ' + e.message;
-    }
-  }
-
-  window.toggleRuleCodeEditor = async function() {
-    const codeArea = document.getElementById('ext-rule-code-area');
-    const saveBtn = document.getElementById('ext-rule-save-code-btn');
-    const filePath = document.getElementById('ext-rule-path-input').value.trim();
-
-    if (codeArea.style.display === 'none' || !codeArea.style.display) {
-      codeArea.style.display = 'block';
-      saveBtn.style.display = 'inline-block';
-      codeArea.value = '// Đang tải nội dung file...';
-      await loadRuleCodeContent(filePath);
     } else {
-      codeArea.style.display = 'none';
-      saveBtn.style.display = 'none';
+      wrap.style.display = 'none';
     }
   };
 
-  window.saveRuleCodeFile = async function() {
-    const filePath = document.getElementById('ext-rule-path-input').value.trim();
-    const content = document.getElementById('ext-rule-code-area').value;
-
-    if (!filePath) {
-      alert('Chưa có đường dẫn file!');
-      return;
-    }
+  window.saveExtRuleCode = async function(id, filePath) {
+    const textarea = document.getElementById('codearea-' + id);
+    if (!textarea) return;
+    const content = textarea.value;
 
     try {
       const res = await fetch('/api/composer/save-rule-file', {

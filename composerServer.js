@@ -181,7 +181,33 @@ function registerComposerRoutes(app, recorder) {
     res.json({ success: true, rule: newRule, rules: currentRules });
   });
 
-  // 3b. External Rule File Endpoints
+  // 3b. External Rule File Endpoints (Multi-rule management)
+  app.get('/api/composer/external-rules', (req, res) => {
+    res.json({ success: true, rules: rulesManager.getExternalRulesList() });
+  });
+
+  app.post('/api/composer/external-rules/toggle', (req, res) => {
+    const { id, enabled } = req.body;
+    const rules = rulesManager.toggleExternalRule(id, enabled);
+    res.json({ success: true, rules });
+  });
+
+  app.post('/api/composer/external-rules/add', (req, res) => {
+    const { path: rulePath, name } = req.body;
+    if (!rulePath) {
+      return res.status(400).json({ error: 'path is required' });
+    }
+    const rules = rulesManager.addExternalRule(rulePath, name);
+    res.json({ success: true, rules });
+  });
+
+  app.post('/api/composer/external-rules/remove', (req, res) => {
+    const { id } = req.body;
+    const rules = rulesManager.removeExternalRule(id);
+    res.json({ success: true, rules });
+  });
+
+  // Legacy single-rule endpoints (backward compatibility)
   app.get('/api/composer/external-rule', (req, res) => {
     res.json(rulesManager.getExternalRuleConfig());
   });
