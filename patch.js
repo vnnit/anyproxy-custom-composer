@@ -117,6 +117,17 @@ function initConfigs() {
     fs.writeFileSync(extConfigPath, JSON.stringify(defaultExt, null, 2), 'utf8');
     console.log('[Config] Created default external_rule_config.json');
   }
+
+  const ipWhitelistPath = path.resolve(__dirname, 'ip_whitelist.json');
+  if (!fs.existsSync(ipWhitelistPath)) {
+    const defaultWl = {
+      enabled: false,
+      stealthMode: false,
+      allowedIps: ['127.0.0.1']
+    };
+    fs.writeFileSync(ipWhitelistPath, JSON.stringify(defaultWl, null, 2), 'utf8');
+    console.log('[Config] Created default ip_whitelist.json');
+  }
 }
 
 // Run all

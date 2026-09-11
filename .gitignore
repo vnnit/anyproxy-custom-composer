@@ -10,6 +10,7 @@ node_modules/
 # User local configs & custom rules
 external_rule_config.json
 rewrite_rules.json
+ip_whitelist.json
 
 # Logs
 *.log

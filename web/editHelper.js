@@ -339,6 +339,7 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
         <div style="display:flex;gap:4px;background:#0f172a;padding:10px 20px 0;border-bottom:1px solid #334155;">
           <button id="tab-btn-filerule" onclick="switchManagerSubTab('filerule')" style="background:none;border:none;color:#38bdf8;font-size:14px;font-weight:bold;padding:8px 16px;cursor:pointer;border-bottom:2px solid #38bdf8;">📁 File Rule .JS Tùy Chọn</button>
           <button id="tab-btn-mockdata" onclick="switchManagerSubTab('mockdata')" style="background:none;border:none;color:#94a3b8;font-size:14px;font-weight:bold;padding:8px 16px;cursor:pointer;border-bottom:2px solid transparent;">🎭 Danh Sách Mock Data (JSON)</button>
+          <button id="tab-btn-whitelist" onclick="switchManagerSubTab('whitelist')" style="background:none;border:none;color:#94a3b8;font-size:14px;font-weight:bold;padding:8px 16px;cursor:pointer;border-bottom:2px solid transparent;">🛡️ Whitelist IP (Port 8001)</button>
         </div>
 
         <!-- Tab 1: File Rule .JS -->
@@ -392,6 +393,59 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
 
           <div id="rules-manager-content" style="padding:16px 20px;overflow-y:auto;flex:1;">
             <!-- Loaded dynamically -->
+          </div>
+        </div>
+
+        <!-- Tab 3: Whitelist IP (Port 8001) -->
+        <div id="subtab-whitelist" style="display:none;padding:18px 20px;overflow-y:auto;flex:1;">
+          <div style="background:#111827;border:1px solid #334155;border-radius:8px;padding:16px;margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="wl-enabled" onchange="toggleWhitelistEnabled(this.checked)" style="width:18px;height:18px;cursor:pointer;">
+                <label for="wl-enabled" style="font-size:14px;font-weight:bold;color:#f8fafc;cursor:pointer;">🛡️ Bật Giới Hạn IP Whitelist (Bảo vệ port 8001)</label>
+              </div>
+              <span id="wl-status-badge" style="font-size:12px;padding:3px 10px;border-radius:4px;font-weight:bold;">Đang kiểm tra...</span>
+            </div>
+            <p style="font-size:13px;color:#94a3b8;margin-bottom:16px;line-height:1.5;">
+              Khi bật tính năng này, <b>chỉ những IP có trong danh sách bên dưới mới được phép kết nối vào port Proxy 8001</b>. Mọi IP lạ hoặc bot quét cổng spam sẽ bị chặn ngay lập tức.
+            </p>
+
+            <!-- Detected Client IP Box -->
+            <div style="background:#0f172a;border:1px solid #1e3a8a;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <span style="font-size:12px;color:#94a3b8;">IP hiện tại của trình duyệt này:</span>
+                <div style="font-size:16px;font-weight:bold;color:#38bdf8;font-family:monospace;" id="wl-current-client-ip">Đang lấy...</div>
+              </div>
+              <button onclick="addCurrentClientIp()" style="background:#38bdf8;color:#0f172a;font-weight:bold;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;display:flex;align-items:center;gap:6px;">
+                ➕ Thêm IP Này Vào Whitelist
+              </button>
+            </div>
+
+            <!-- Add custom IP -->
+            <div style="margin-bottom:16px;">
+              <label style="display:block;font-size:12px;color:#94a3b8;font-weight:bold;margin-bottom:6px;">THÊM ĐỊA CHỈ IP HOẶC DẢI IP (Hỗ trợ IP đơn, Wildcard *, hoặc CIDR /24):</label>
+              <div style="display:flex;gap:8px;">
+                <input id="wl-new-ip-input" type="text" placeholder="Ví dụ: 27.79.75.216 hoặc 27.79.75.* hoặc 192.168.1.0/24" style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#f8fafc;padding:8px 12px;font-family:monospace;font-size:13px;">
+                <button onclick="addNewWhitelistIp()" style="background:#22c55e;color:#0f172a;font-weight:bold;border:none;border-radius:6px;padding:8px 18px;cursor:pointer;">➕ Thêm</button>
+              </div>
+            </div>
+
+            <!-- Stealth Mode option -->
+            <div style="margin-bottom:16px;padding:10px 14px;background:#090d16;border-radius:6px;display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="wl-stealth-mode" onchange="toggleWhitelistStealth(this.checked)" style="width:16px;height:16px;cursor:pointer;">
+              <label for="wl-stealth-mode" style="font-size:13px;color:#cbd5e1;cursor:pointer;">
+                <b>Chế độ Tàng hình (Stealth Mode / Drop TCP Socket):</b> Ngắt kết nối TCP ngay lập tức, không phản hồi HTTP (máy quét cổng sẽ thấy port bị đóng hoàn toàn).
+              </label>
+            </div>
+
+            <!-- Allowed IPs List -->
+            <div>
+              <label style="display:block;font-size:12px;color:#94a3b8;font-weight:bold;margin-bottom:8px;">DANH SÁCH CÁC IP ĐƯỢC PHÉP TRUY CẬP PROXY 8001:</label>
+              <div id="wl-ips-container" style="display:flex;flex-direction:column;gap:8px;">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -531,25 +585,173 @@ return false; // Rơi vào ELSE (kết quả server gốc)"></textarea>
   window.switchManagerSubTab = function(tabName) {
     const tabBtnFile = document.getElementById('tab-btn-filerule');
     const tabBtnMock = document.getElementById('tab-btn-mockdata');
+    const tabBtnWl = document.getElementById('tab-btn-whitelist');
     const subtabFile = document.getElementById('subtab-filerule');
     const subtabMock = document.getElementById('subtab-mockdata');
+    const subtabWl = document.getElementById('subtab-whitelist');
+
+    // Reset buttons
+    if (tabBtnFile) { tabBtnFile.style.color = '#94a3b8'; tabBtnFile.style.borderBottom = '2px solid transparent'; }
+    if (tabBtnMock) { tabBtnMock.style.color = '#94a3b8'; tabBtnMock.style.borderBottom = '2px solid transparent'; }
+    if (tabBtnWl) { tabBtnWl.style.color = '#94a3b8'; tabBtnWl.style.borderBottom = '2px solid transparent'; }
+
+    // Reset subtabs
+    if (subtabFile) subtabFile.style.display = 'none';
+    if (subtabMock) subtabMock.style.display = 'none';
+    if (subtabWl) subtabWl.style.display = 'none';
 
     if (tabName === 'filerule') {
-      subtabFile.style.display = 'block';
-      subtabMock.style.display = 'none';
-      tabBtnFile.style.color = '#38bdf8';
-      tabBtnFile.style.borderBottom = '2px solid #38bdf8';
-      tabBtnMock.style.color = '#94a3b8';
-      tabBtnMock.style.borderBottom = '2px solid transparent';
+      if (subtabFile) subtabFile.style.display = 'block';
+      if (tabBtnFile) { tabBtnFile.style.color = '#38bdf8'; tabBtnFile.style.borderBottom = '2px solid #38bdf8'; }
       loadExternalRuleInfo();
-    } else {
-      subtabFile.style.display = 'none';
-      subtabMock.style.display = 'flex';
-      tabBtnMock.style.color = '#a855f7';
-      tabBtnMock.style.borderBottom = '2px solid #a855f7';
-      tabBtnFile.style.color = '#94a3b8';
-      tabBtnFile.style.borderBottom = '2px solid transparent';
+    } else if (tabName === 'mockdata') {
+      if (subtabMock) subtabMock.style.display = 'flex';
+      if (tabBtnMock) { tabBtnMock.style.color = '#a855f7'; tabBtnMock.style.borderBottom = '2px solid #a855f7'; }
       loadMockRulesList();
+    } else if (tabName === 'whitelist') {
+      if (subtabWl) subtabWl.style.display = 'block';
+      if (tabBtnWl) { tabBtnWl.style.color = '#10b981'; tabBtnWl.style.borderBottom = '2px solid #10b981'; }
+      loadWhitelistInfo();
+    }
+  };
+
+  window.loadWhitelistInfo = async function() {
+    try {
+      const res = await fetch('/api/composer/whitelist');
+      const data = await res.json();
+      if (!data) return;
+
+      const ipEl = document.getElementById('wl-current-client-ip');
+      if (ipEl) ipEl.textContent = data.clientIp || '127.0.0.1';
+
+      const chk = document.getElementById('wl-enabled');
+      if (chk) chk.checked = !!data.enabled;
+
+      const stealthChk = document.getElementById('wl-stealth-mode');
+      if (stealthChk) stealthChk.checked = !!data.stealthMode;
+
+      const badge = document.getElementById('wl-status-badge');
+      if (badge) {
+        if (data.enabled) {
+          badge.style.background = '#065f46';
+          badge.style.color = '#34d399';
+          badge.textContent = `🟢 ĐANG BẬT BẢO VỆ (${(data.allowedIps || []).length} IP)`;
+        } else {
+          badge.style.background = '#991b1b';
+          badge.style.color = '#f87171';
+          badge.textContent = '⚪ ĐANG TẮT (Cho phép mọi IP)';
+        }
+      }
+
+      const container = document.getElementById('wl-ips-container');
+      if (container) {
+        const ips = data.allowedIps || [];
+        if (!ips.length) {
+          container.innerHTML = '<div style="color:#94a3b8;padding:12px;text-align:center;">Chưa có IP nào trong danh sách.</div>';
+        } else {
+          container.innerHTML = ips.map(ip => `
+            <div style="display:flex;justify-content:space-between;align-items:center;background:#090d16;border:1px solid #1e293b;border-radius:6px;padding:8px 14px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-family:monospace;font-size:14px;color:#f8fafc;font-weight:bold;">${ip}</span>
+                ${ip === data.clientIp ? '<span style="font-size:11px;background:#1e3a8a;color:#93c5fd;padding:1px 6px;border-radius:3px;">(IP hiện tại của bạn)</span>' : ''}
+              </div>
+              <button onclick="removeWhitelistIp('${ip}')" style="background:#dc2626;color:white;border:none;border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;">🗑️ Xóa</button>
+            </div>
+          `).join('');
+        }
+      }
+    } catch (e) {
+      console.error('Lỗi loadWhitelistInfo:', e);
+    }
+  };
+
+  window.toggleWhitelistEnabled = async function(enabled) {
+    try {
+      await fetch('/api/composer/whitelist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled })
+      });
+      loadWhitelistInfo();
+    } catch(e) {
+      alert('Lỗi cập nhật: ' + e.message);
+    }
+  };
+
+  window.toggleWhitelistStealth = async function(stealthMode) {
+    try {
+      await fetch('/api/composer/whitelist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stealthMode })
+      });
+      loadWhitelistInfo();
+    } catch(e) {
+      alert('Lỗi cập nhật: ' + e.message);
+    }
+  };
+
+  window.addCurrentClientIp = async function() {
+    const ip = document.getElementById('wl-current-client-ip').textContent.trim();
+    if (!ip || ip === 'Đang lấy...') {
+      alert('Chưa lấy được IP hiện tại!');
+      return;
+    }
+    try {
+      const res = await fetch('/api/composer/whitelist/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('🎉 ĐÃ THÊM IP ' + ip + ' VÀO WHITELIST THÀNH CÔNG!');
+        loadWhitelistInfo();
+      }
+    } catch(e) {
+      alert('Lỗi: ' + e.message);
+    }
+  };
+
+  window.addNewWhitelistIp = async function() {
+    const input = document.getElementById('wl-new-ip-input');
+    const ip = input.value.trim();
+    if (!ip) {
+      alert('Vui lòng nhập địa chỉ IP hoặc dải IP!');
+      return;
+    }
+    try {
+      const res = await fetch('/api/composer/whitelist/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip })
+      });
+      const data = await res.json();
+      if (data.success) {
+        input.value = '';
+        alert('🎉 ĐÃ THÊM ' + ip + ' VÀO WHITELIST!');
+        loadWhitelistInfo();
+      }
+    } catch(e) {
+      alert('Lỗi: ' + e.message);
+    }
+  };
+
+  window.removeWhitelistIp = async function(ip) {
+    if (confirm('Bạn có chắc muốn xóa IP ' + ip + ' khỏi Whitelist?')) {
+      try {
+        const res = await fetch('/api/composer/whitelist/remove', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ip })
+        });
+        const data = await res.json();
+        if (data.success) {
+          loadWhitelistInfo();
+        }
+      } catch(e) {
+        alert('Lỗi: ' + e.message);
+      }
     }
   };
 

@@ -27,6 +27,13 @@ Một phiên bản mở rộng mạnh mẽ của **AnyProxy** tích hợp sẵn 
    - Checkbox bật/tắt rule tức thì (Check = áp dụng rule, Bỏ check = chạy bình thường không can thiệp).
    - Tích hợp khung xem và sửa code rule trực tiếp ngay trên trình duyệt, lưu file là AnyProxy tự động nạp code mới ngay lập tức mà **không cần khởi động lại server**.
 
+5. **Bảo Vệ Port Proxy 8001 Bằng IP Whitelist (Chống Scan & Spam)**:
+   - Ngăn chặn triệt để bot trên internet quét và lợi dụng port 8001 làm open proxy để spam.
+   - Quản lý danh sách IP được phép kết nối trực tiếp trên Web UI (`:8002` -> `[🛡️ Whitelist IP]`).
+   - Tự động nhận diện IP của bạn với nút **`[➕ Thêm IP Này Vào Whitelist]`** chỉ 1 click.
+   - Hỗ trợ IP đơn, dải IP Wildcard (`27.79.75.*`) và CIDR (`192.168.1.0/24`).
+   - Tùy chọn **Chế độ Tàng hình (Stealth Mode)** ngắt kết nối TCP ngay lập tức, khiến máy quét cổng thấy port bị đóng hoàn toàn.
+
 ---
 
 ## 🚀 Cài Đặt & Khởi Chạy
@@ -103,21 +110,29 @@ Mặc định AnyProxy sẽ lắng nghe tại:
   - Bấm **`[👁️ Xem / Sửa Code File Trực Tiếp]`** để chỉnh sửa code rule ngay trong trình duyệt mà không cần mở editor bên ngoài.
   - Check/Bỏ check vào ô `☑️ Bật File Rule .JS Này` để bật hoặc tắt việc can thiệp.
 
+### 4. Quản Lý Whitelist IP (Chống Spam / Quét Cổng)
+- Bấm nút tím **`[📋 Quản Lý Rules (Mock / File .JS)]`** -> Chọn tab **`🛡️ Whitelist IP (Port 8001)`**.
+- Bấm **`[➕ Thêm IP Này Vào Whitelist]`** để thêm ngay IP của thiết bị bạn đang dùng.
+- Có thể nhập thêm các IP khác hoặc dải IP (như `27.79.75.*`) để cấp quyền.
+- Bật **Chế độ Tàng hình (Stealth Mode)** nếu bạn muốn AnyProxy ngắt kết nối TCP ngay lập tức khi phát hiện IP lạ quét cổng.
+
 ---
 
 ## 📁 Cấu Trúc Thư Mục
 
 ```
-├── composerServer.js      # Backend API cho Composer, Rules Manager, File Reader/Writer
-├── rulesManager.js        # Module quản lý Mock Rules, evaluate IF-ELSE, Hot-reload file rule .js
-├── rule.js                # AnyProxy Rule chính, điều hướng mọi HTTPS qua rulesManager
-├── start.js               # Entry script khởi chạy AnyProxy (ports 8001 / 8002)
-├── patch.js               # Script tự động patch AnyProxy & CertGenerator khi npm install
-├── initCert.js            # Script tạo chứng chỉ Root CA 10 năm
-├── composer.html          # Giao diện Web Composer độc lập
-├── example_rule.js        # File rule mẫu tham khảo
+├── composerServer.js        # Backend API cho Composer, Rules Manager, Whitelist, File Reader/Writer
+├── ipWhitelistManager.js    # Module quản lý IP Whitelist, lọc kết nối TCP, CIDR & Wildcard matching
+├── rulesManager.js          # Module quản lý Mock Rules, evaluate IF-ELSE, Hot-reload file rule .js
+├── rule.js                  # AnyProxy Rule chính, điều hướng mọi HTTPS qua rulesManager
+├── start.js                 # Entry script khởi chạy AnyProxy (ports 8001 / 8002) + IP protection
+├── patch.js                 # Script tự động patch AnyProxy & CertGenerator khi npm install
+├── initCert.js              # Script tạo chứng chỉ Root CA 10 năm
+├── composer.html            # Giao diện Web Composer độc lập
+├── example_rule.js          # File rule mẫu tham khảo
+├── ip_whitelist.template.json # Template cấu hình Whitelist IP
 ├── web/
-│   └── editHelper.js      # Script gắn thêm giao diện modal, nút bấm vào AnyProxy Web UI
+│   └── editHelper.js        # Script gắn thêm giao diện modal, nút bấm vào AnyProxy Web UI
 ├── package.json
 └── README.md
 ```

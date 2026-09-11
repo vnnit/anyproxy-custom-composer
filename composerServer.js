@@ -5,6 +5,7 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const rulesManager = require('./rulesManager');
+const ipWhitelistManager = require('./ipWhitelistManager');
 
 function registerComposerRoutes(app, recorder) {
   // 1. API: Execute HTTP/HTTPS request directly (Replay / Composer)
@@ -214,6 +215,38 @@ function registerComposerRoutes(app, recorder) {
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
+  });
+
+  // 3c. IP Whitelist Endpoints (Protect Proxy Port 8001)
+  app.get('/api/composer/whitelist', (req, res) => {
+    const rawClientIp = req.headers['x-forwarded-for']
+      ? req.headers['x-forwarded-for'].split(',')[0]
+      : (req.socket && req.socket.remoteAddress);
+    const clientIp = ipWhitelistManager.cleanIp(rawClientIp);
+    res.json(Object.assign({ clientIp }, ipWhitelistManager.getWhitelistConfig()));
+  });
+
+  app.post('/api/composer/whitelist', (req, res) => {
+    const updated = ipWhitelistManager.setWhitelistConfig(req.body);
+    res.json({ success: true, config: updated });
+  });
+
+  app.post('/api/composer/whitelist/add', (req, res) => {
+    const { ip } = req.body;
+    if (!ip) {
+      return res.status(400).json({ error: 'IP is required' });
+    }
+    const updated = ipWhitelistManager.addIp(ip);
+    res.json({ success: true, config: updated });
+  });
+
+  app.post('/api/composer/whitelist/remove', (req, res) => {
+    const { ip } = req.body;
+    if (!ip) {
+      return res.status(400).json({ error: 'IP is required' });
+    }
+    const updated = ipWhitelistManager.removeIp(ip);
+    res.json({ success: true, config: updated });
   });
 
   // 4. Serve Composer UI HTML

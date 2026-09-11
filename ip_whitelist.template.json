@@ -1,0 +1,7 @@
+{
+  "enabled": false,
+  "stealthMode": false,
+  "allowedIps": [
+    "127.0.0.1"
+  ]
+}
